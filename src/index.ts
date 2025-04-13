@@ -3,7 +3,6 @@
 import { startMcpServer } from './server';
 import config from './config/config';
 import { authManager } from './upstox/auth';
-import open from 'open';
 
 /**
  * Check if a command-line flag is present
@@ -38,17 +37,8 @@ async function main() {
         console.log('\nAuthorization required. Please visit the following URL to authenticate:');
         console.log(authUrl);
         
-        // Ask if the user wants to open the URL automatically
-        console.log('\nWould you like to open this URL automatically? (Y/n)');
-        
-        // Wait for user input with a 5-second timeout
-        setTimeout(() => {
-          console.log('Automatically opening URL in your default browser...');
-          open(authUrl).catch(err => {
-            console.error('Failed to open browser:', err);
-            console.log('Please copy and paste the URL into your browser manually.');
-          });
-        }, 5000);
+        // Just show instructions for manually opening
+        console.log('\nPlease open this URL in your browser to authenticate.');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.warn('Unable to generate authorization URL:', errorMessage);
