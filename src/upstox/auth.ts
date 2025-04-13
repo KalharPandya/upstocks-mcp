@@ -53,7 +53,7 @@ export class UpstoxAuthManager extends EventEmitter {
         isAuthorized: true
       };
 
-      console.info(`Initialized auth manager with pre-configured access token (expires ${tokenExpiry.toISOString()})`);
+      // console.info(`Initialized auth manager with pre-configured access token (expires ${tokenExpiry.toISOString()})`);
     }
   }
 

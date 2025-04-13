@@ -170,10 +170,10 @@ export function validateConfig(config: Config): void {
   }
   
   // Log configuration information
-  console.info(`Upstox MCP Server Configuration:`);
-  console.info(`- Environment: ${config.upstox.environment}`);
-  console.info(`- Auth Method: ${config.upstox.authMethod}`);
-  console.info(`- Server Port: ${config.server.port}`);
+  // console.info(`Upstox MCP Server Configuration:`);
+  // console.info(`- Environment: ${config.upstox.environment}`);
+  // console.info(`- Auth Method: ${config.upstox.authMethod}`);
+  // console.info(`- Server Port: ${config.server.port}`);
 }
 
 // Load and validate config
