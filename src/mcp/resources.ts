@@ -28,7 +28,7 @@ export class McpResources {
           parameters: {
             instruments: {
               type: 'array',
-              description: 'List of instrument keys (e.g., NSE_EQ|INFY)'
+              description: 'List of instrument symbols (e.g., "INFY" or complete symbol like "NSE_EQ|INFY")'
             }
           }
         }
@@ -61,7 +61,7 @@ export class McpResources {
           parameters: {
             exchange: {
               type: 'string',
-              description: 'Exchange code (e.g., NSE_EQ, BSE_EQ)'
+              description: 'Exchange name (e.g., "NSE", "BSE") or complete code (e.g., "NSE_EQ")'
             }
           }
         }
@@ -83,22 +83,22 @@ export class McpResources {
 
     switch (resource_id) {
       case 'market-data':
-        return this.getMarketData(resourceParams);
+        return await this.getMarketData(resourceParams);
       
       case 'positions':
-        return this.getPositions();
+        return await this.getPositions();
       
       case 'holdings':
-        return this.getHoldings();
+        return await this.getHoldings();
       
       case 'orders':
-        return this.getOrders();
+        return await this.getOrders();
       
       case 'profile':
-        return this.getProfile();
+        return await this.getProfile();
       
       case 'instruments':
-        return this.getInstruments(resourceParams);
+        return await this.getInstruments(resourceParams);
       
       default:
         throw new Error(`Resource not found: ${resource_id}`);
@@ -110,65 +110,105 @@ export class McpResources {
    */
   private async getMarketData(params: any): Promise<McpResourceContent> {
     // Validate parameters
-    if (!params.instruments || !Array.isArray(params.instruments) || params.instruments.length === 0) {
-      throw new Error('Valid instruments array is required');
+    if (!params.instruments) {
+      throw new Error('No instruments specified. Please provide at least one instrument.');
+    }
+    
+    const instruments = Array.isArray(params.instruments) 
+      ? params.instruments 
+      : [params.instruments];
+      
+    if (instruments.length === 0) {
+      throw new Error('Empty instruments array. Please provide at least one instrument.');
     }
 
-    // Fetch market data from Upstox
-    const marketData = await upstoxApi.getMarketData(params.instruments);
-    
-    return {
-      content: JSON.stringify(marketData),
-      content_type: 'application/json'
-    };
+    try {
+      // Fetch market data from Upstox
+      const marketData = await upstoxApi.getMarketData(instruments);
+      
+      return {
+        content: JSON.stringify(marketData),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting market data:', errorMessage);
+      
+      // Return a more useful error message
+      throw new Error(`Failed to get market data: ${errorMessage}. Make sure you're using valid instrument symbols like "NSE_EQ|INFY" or just "INFY".`);
+    }
   }
 
   /**
    * Get positions
    */
   private async getPositions(): Promise<McpResourceContent> {
-    const positions = await upstoxApi.getPositions();
-    
-    return {
-      content: JSON.stringify(positions),
-      content_type: 'application/json'
-    };
+    try {
+      const positions = await upstoxApi.getPositions();
+      
+      return {
+        content: JSON.stringify(positions),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting positions:', errorMessage);
+      throw error;
+    }
   }
 
   /**
    * Get holdings
    */
   private async getHoldings(): Promise<McpResourceContent> {
-    const holdings = await upstoxApi.getHoldings();
-    
-    return {
-      content: JSON.stringify(holdings),
-      content_type: 'application/json'
-    };
+    try {
+      const holdings = await upstoxApi.getHoldings();
+      
+      return {
+        content: JSON.stringify(holdings),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting holdings:', errorMessage);
+      throw error;
+    }
   }
 
   /**
    * Get orders
    */
   private async getOrders(): Promise<McpResourceContent> {
-    const orders = await upstoxApi.getOrders();
-    
-    return {
-      content: JSON.stringify(orders),
-      content_type: 'application/json'
-    };
+    try {
+      const orders = await upstoxApi.getOrders();
+      
+      return {
+        content: JSON.stringify(orders),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting orders:', errorMessage);
+      throw error;
+    }
   }
 
   /**
    * Get user profile
    */
   private async getProfile(): Promise<McpResourceContent> {
-    const profile = await upstoxApi.getProfile();
-    
-    return {
-      content: JSON.stringify(profile),
-      content_type: 'application/json'
-    };
+    try {
+      const profile = await upstoxApi.getProfile();
+      
+      return {
+        content: JSON.stringify(profile),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting profile:', errorMessage);
+      throw error;
+    }
   }
 
   /**
@@ -177,15 +217,23 @@ export class McpResources {
   private async getInstruments(params: any): Promise<McpResourceContent> {
     // Validate parameters
     if (!params.exchange || typeof params.exchange !== 'string') {
-      throw new Error('Valid exchange is required');
+      throw new Error('Exchange parameter is required (e.g., "NSE", "BSE", or complete code like "NSE_EQ")');
     }
 
-    const instruments = await upstoxApi.getInstruments(params.exchange);
-    
-    return {
-      content: JSON.stringify(instruments),
-      content_type: 'application/json'
-    };
+    try {
+      const instruments = await upstoxApi.getInstruments(params.exchange);
+      
+      return {
+        content: JSON.stringify(instruments),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting instruments:', errorMessage);
+      
+      // Return a more useful error message
+      throw new Error(`Failed to get instruments: ${errorMessage}. Make sure you're using a valid exchange like "NSE", "BSE", or "NSE_EQ".`);
+    }
   }
 }
 
