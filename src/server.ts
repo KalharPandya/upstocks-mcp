@@ -9,6 +9,7 @@ import { mcpTools } from './mcp/tools';
 import { authManager } from './upstox/auth';
 import config, { EnvironmentType } from './config/config';
 import { JsonRpcRequest, JsonRpcResponse } from './mcp/types';
+import { tunnelManager } from './utils/tunnel';
 
 /**
  * MCP Server implementation
@@ -18,14 +19,18 @@ export class McpServer {
   private server: http.Server;
   private wss: WebSocketServer;
   private isRunning = false;
+  private useNgrok = false;
 
-  constructor() {
+  constructor(options: { useNgrok?: boolean } = {}) {
+    this.useNgrok = options.useNgrok || false;
+    
     this.app = express();
     this.server = http.createServer(this.app);
     this.wss = new WebSocketServer({ server: this.server });
 
     // Configure middleware
     this.app.use(bodyParser.json());
+    this.app.use(bodyParser.urlencoded({ extended: true }));
 
     // Initialize MCP components
     this.initializeMcp();
@@ -89,6 +94,7 @@ export class McpServer {
 
     // Auth callback endpoint for Upstox OAuth
     this.app.get('/callback', async (req, res) => {
+      console.info('Received callback from Upstox:', req.query);
       const code = req.query.code as string;
       
       if (!code) {
@@ -118,16 +124,69 @@ export class McpServer {
       }
     });
 
+    // Webhook endpoint for order updates
+    this.app.post('/webhook', async (req, res) => {
+      try {
+        console.info('Received webhook from Upstox:', req.body);
+        // Process the webhook data
+        // This could be stored or forwarded to clients via WebSockets
+        
+        // Respond with success
+        res.status(200).json({ status: 'success' });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Error processing webhook:', error);
+        res.status(500).json({ 
+          status: 'error', 
+          message: errorMessage 
+        });
+      }
+    });
+
+    // Notifier endpoint for access token notifications
+    this.app.post('/notifier', async (req, res) => {
+      try {
+        console.info('Received notifier webhook from Upstox:', req.body);
+        
+        // Extract token from request
+        const { access_token } = req.body;
+        if (access_token) {
+          // Set the token in the auth manager
+          authManager.setToken(access_token, config.upstox.environment === EnvironmentType.SANDBOX ? 30 : 1);
+        }
+        
+        // Respond with success
+        res.status(200).json({ status: 'success' });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Error processing notifier:', error);
+        res.status(500).json({ 
+          status: 'error', 
+          message: errorMessage 
+        });
+      }
+    });
+
     // Health check endpoint
     this.app.get('/health', async (_req, res) => {
       try {
         const isApiReady = authManager.getAuthState().isAuthorized;
+        const tunnelUrl = tunnelManager.getUrl();
         
         res.json({ 
           status: 'healthy', 
           mode: config.upstox.environment === EnvironmentType.SANDBOX ? 'sandbox' : 'live',
           auth_method: config.upstox.authMethod,
-          api_ready: isApiReady
+          api_ready: isApiReady,
+          tunnel: {
+            enabled: this.useNgrok,
+            url: tunnelUrl || null
+          },
+          urls: tunnelUrl ? {
+            callback: tunnelManager.getCallbackUrl(),
+            webhook: tunnelManager.getWebhookUrl(),
+            notifier: tunnelManager.getNotifierUrl()
+          } : null
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -188,8 +247,23 @@ export class McpServer {
       return;
     }
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>(async (resolve) => {
       const { port, host } = config.server;
+      
+      // Start ngrok tunnel if enabled
+      if (this.useNgrok) {
+        try {
+          const tunnelUrl = await tunnelManager.start();
+          console.log(`Ngrok tunnel established: ${tunnelUrl}`);
+          
+          // Update Upstox redirect URI to use the ngrok URL
+          config.upstox.redirectUri = tunnelManager.getCallbackUrl() || config.upstox.redirectUri;
+          console.log(`Updated redirect URI to: ${config.upstox.redirectUri}`);
+        } catch (error) {
+          console.error('Failed to start ngrok tunnel:', error);
+          // Continue without tunnel if it fails
+        }
+      }
       
       this.server.listen(port, host, () => {
         this.isRunning = true;
@@ -198,6 +272,14 @@ export class McpServer {
         // Log environment information
         console.log(`Environment: ${config.upstox.environment}`);
         console.log(`Log Level: ${config.server.logLevel}`);
+        
+        if (this.useNgrok && tunnelManager.isConnected()) {
+          console.log('');
+          console.log('Use the following URLs for Upstox API configuration:');
+          console.log(`Redirect URL: ${tunnelManager.getCallbackUrl()}`);
+          console.log(`Webhook URL: ${tunnelManager.getWebhookUrl()}`);
+          console.log(`Notifier URL: ${tunnelManager.getNotifierUrl()}`);
+        }
         
         resolve();
       });
@@ -210,6 +292,11 @@ export class McpServer {
   async stop(): Promise<void> {
     if (!this.isRunning) {
       return;
+    }
+
+    // Stop the ngrok tunnel if it's active
+    if (this.useNgrok && tunnelManager.isConnected()) {
+      await tunnelManager.stop();
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -228,8 +315,8 @@ export class McpServer {
 }
 
 // Create and export a function to start the server
-export async function startMcpServer(): Promise<McpServer> {
-  const server = new McpServer();
+export async function startMcpServer(options: { useNgrok?: boolean } = {}): Promise<McpServer> {
+  const server = new McpServer(options);
   await server.start();
   return server;
 }
