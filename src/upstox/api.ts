@@ -8,7 +8,7 @@ import {
   UpstoxInstrument,
   UpstoxMarketFeed
 } from './types';
-import config, { EnvironmentType, UpstoxConfig } from '../config/config';
+import config, { EnvironmentType } from '../config/config';
 
 /**
  * Upstox API client for interacting with the Upstox REST API
@@ -28,18 +28,17 @@ export class UpstoxApiClient {
     });
 
     // Add request interceptor to include the auth token
-    this.client.interceptors.request.use(async (config) => {
+    this.client.interceptors.request.use(async (axiosConfig) => {
       // Only log the first API call
       if (!this.isInitialized) {
-        console.info(`Making API calls to ${this.baseUrl} (${config?.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);
-          const upstoxConfig = config.upstox as UpstoxConfig;
-          console.info(`Making API calls to ${this.baseUrl} (${upstoxConfig.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);          this.isInitialized = true;
+        console.info(`Making API calls to ${this.baseUrl} (${config.upstox.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);
+        this.isInitialized = true;
       }
       
       try {
         const token = await authManager.getAccessToken();
-        config.headers.Authorization = `Bearer ${token}`;
-        return config;
+        axiosConfig.headers.Authorization = `Bearer ${token}`;
+        return axiosConfig;
       } catch (error) {
         console.error('Authentication error:', error);
         throw error;
