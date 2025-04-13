@@ -2,6 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import readline from 'readline';
 
 import { mcpCore } from './mcp/core';
 import { mcpResources } from './mcp/resources';
@@ -20,9 +21,12 @@ export class McpServer {
   private wss: WebSocketServer;
   private isRunning = false;
   private useNgrok = false;
+  private stdioMode = false;
+  private rl: readline.Interface | null = null;
 
-  constructor(options: { useNgrok?: boolean } = {}) {
+  constructor(options: { useNgrok?: boolean; useStdio?: boolean } = {}) {
     this.useNgrok = options.useNgrok || false;
+    this.stdioMode = options.useStdio || process.env.MCP_STDOUT_ONLY === 'true';
     
     this.app = express();
     this.server = http.createServer(this.app);
@@ -40,6 +44,11 @@ export class McpServer {
 
     // Setup WebSocket handlers
     this.setupWebSocket();
+    
+    // Setup stdin/stdout communication if needed
+    if (this.stdioMode) {
+      this.setupStdioTransport();
+    }
   }
 
   /**
@@ -240,6 +249,57 @@ export class McpServer {
   }
 
   /**
+   * Setup stdin/stdout transport for direct MCP communication
+   * This is used when integrated with Claude or other MCP clients
+   */
+  private setupStdioTransport(): void {
+    console.error('[INFO] Setting up stdin/stdout transport for MCP');
+    
+    // Create readline interface
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: false
+    });
+    
+    // Handle incoming JSON-RPC messages from stdin
+    this.rl.on('line', async (line) => {
+      try {
+        // Parse the JSON-RPC request
+        const request = JSON.parse(line) as JsonRpcRequest;
+        
+        // Process the request
+        const response = await mcpCore.processRequest(request);
+        
+        // Send the response to stdout
+        // NOTE: We use process.stdout.write directly to avoid any formatting
+        process.stdout.write(JSON.stringify(response) + '\n');
+      } catch (error) {
+        console.error('[ERROR] Failed to process stdin message:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Create error response with a default ID of 0
+        const errorResponse = {
+          jsonrpc: '2.0',
+          id: 0, // We don't know the actual ID if parsing failed
+          error: {
+            code: -32700,
+            message: `Parse error: ${errorMessage}`
+          }
+        };
+        
+        process.stdout.write(JSON.stringify(errorResponse) + '\n');
+      }
+    });
+    
+    // Handle EOF
+    this.rl.on('close', () => {
+      console.error('[INFO] stdin stream closed');
+      process.exit(0);
+    });
+  }
+
+  /**
    * Start the server
    */
   async start(): Promise<void> {
@@ -265,24 +325,32 @@ export class McpServer {
         }
       }
       
-      this.server.listen(port, host, () => {
+      // Only start the HTTP server if we're not in stdio-only mode
+      if (!this.stdioMode) {
+        this.server.listen(port, host, () => {
+          this.isRunning = true;
+          console.log(`Server running on http://${host}:${port}/mcp`);
+          
+          // Log environment information
+          console.log(`Environment: ${config.upstox.environment}`);
+          console.log(`Log Level: ${config.server.logLevel}`);
+          
+          if (this.useNgrok && tunnelManager.isConnected()) {
+            console.log('');
+            console.log('Use the following URLs for Upstox API configuration:');
+            console.log(`Redirect URL: ${tunnelManager.getCallbackUrl()}`);
+            console.log(`Webhook URL: ${tunnelManager.getWebhookUrl()}`);
+            console.log(`Notifier URL: ${tunnelManager.getNotifierUrl()}`);
+          }
+          
+          resolve();
+        });
+      } else {
+        // In stdio mode, we're already running
         this.isRunning = true;
-        console.log(`Server running on http://${host}:${port}/mcp`);
-        
-        // Log environment information
-        console.log(`Environment: ${config.upstox.environment}`);
-        console.log(`Log Level: ${config.server.logLevel}`);
-        
-        if (this.useNgrok && tunnelManager.isConnected()) {
-          console.log('');
-          console.log('Use the following URLs for Upstox API configuration:');
-          console.log(`Redirect URL: ${tunnelManager.getCallbackUrl()}`);
-          console.log(`Webhook URL: ${tunnelManager.getWebhookUrl()}`);
-          console.log(`Notifier URL: ${tunnelManager.getNotifierUrl()}`);
-        }
-        
+        console.error('[INFO] Running in stdio mode, HTTP server not started');
         resolve();
-      });
+      }
     });
   }
 
@@ -298,25 +366,47 @@ export class McpServer {
     if (this.useNgrok && tunnelManager.isConnected()) {
       await tunnelManager.stop();
     }
+    
+    // Close stdin/stdout transport if active
+    if (this.stdioMode && this.rl) {
+      this.rl.close();
+    }
 
-    return new Promise<void>((resolve, reject) => {
-      this.server.close((err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        this.isRunning = false;
-        console.log('Server stopped');
-        resolve();
+    // Only close the HTTP server if it was started
+    if (!this.stdioMode) {
+      return new Promise<void>((resolve, reject) => {
+        this.server.close((err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          this.isRunning = false;
+          console.log('Server stopped');
+          resolve();
+        });
       });
-    });
+    } else {
+      this.isRunning = false;
+      console.error('[INFO] Stdio transport closed');
+      return Promise.resolve();
+    }
   }
 }
 
 // Create and export a function to start the server
-export async function startMcpServer(options: { useNgrok?: boolean } = {}): Promise<McpServer> {
-  const server = new McpServer(options);
+export async function startMcpServer(options: { useNgrok?: boolean; useStdio?: boolean } = {}): Promise<McpServer> {
+  // Check if we're being run by an MCP client like Claude
+  const mcpStdioMode = process.env.MCP_STDOUT_ONLY === 'true';
+  
+  // Use stdio mode if explicitly requested or if environment variable is set
+  const useStdio = options.useStdio || mcpStdioMode;
+  
+  const server = new McpServer({ 
+    useNgrok: options.useNgrok, 
+    useStdio: useStdio 
+  });
+  
   await server.start();
   return server;
 }
