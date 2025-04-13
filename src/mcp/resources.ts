@@ -107,6 +107,8 @@ export class McpResources {
 
   /**
    * Get market data for specified instruments
+   * 
+   * Updated to handle the new API endpoint format
    */
   private async getMarketData(params: any): Promise<McpResourceContent> {
     // Validate parameters
@@ -123,11 +125,25 @@ export class McpResources {
     }
 
     try {
+      // Log the request to aid in debugging
+      console.log(`MCP Resource: Requesting market data for instruments: ${instruments.join(', ')}`);
+      
       // Fetch market data from Upstox
       const marketData = await upstoxApi.getMarketData(instruments);
       
+      // Add a message to clarify the format when returning empty or unexpected results
+      let result = marketData;
+      
+      // If we get an empty object, include a helpful message
+      if (Object.keys(result).length === 0) {
+        result = {
+          _note: "No market data returned. This may be due to market hours or invalid instrument symbols.",
+          _instruments_requested: instruments
+        };
+      }
+      
       return {
-        content: JSON.stringify(marketData),
+        content: JSON.stringify(result, null, 2),
         content_type: 'application/json'
       };
     } catch (error) {
