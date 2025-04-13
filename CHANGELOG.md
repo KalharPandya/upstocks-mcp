@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added dedicated "funds" resource to check available balance and margin information
+- Added historical data (OHLC candles) resource with date range and interval selection
+- Added support for more time intervals (1min, 5min, 15min, 30min, 1hr, 1day, 1week, 1month)
+
 ### Fixed
 - Fixed market data API endpoint from `/market/quotes` to `/market-quote/quotes` to match the official Upstox Python SDK
 - Added proper API version header for market quotes requests
