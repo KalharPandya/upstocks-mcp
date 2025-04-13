@@ -1,7 +1,11 @@
 import axios from 'axios';
 import { EventEmitter } from 'events';
 import { UpstoxToken, UpstoxAuthState } from './types';
-import config from '../config/config';
+import config, { 
+  AuthMethod, 
+  EnvironmentType,
+  getActiveCredentials 
+} from '../config/config';
 
 /**
  * Auth manager for handling Upstox API authentication
@@ -13,10 +17,44 @@ export class UpstoxAuthManager extends EventEmitter {
     isAuthorized: false
   };
 
-  private config = config.upstox;
-
   constructor() {
     super();
+    this.initializeFromConfig();
+  }
+
+  /**
+   * Initialize auth state based on configuration
+   */
+  private initializeFromConfig(): void {
+    const { environment, authMethod } = config.upstox;
+    const credentials = getActiveCredentials(config);
+    
+    // If using direct access token, initialize the state
+    if (authMethod === AuthMethod.ACCESS_TOKEN && credentials.accessToken) {
+      // Calculate expiry based on standard Upstox token expiry rules
+      // Upstox tokens expire at 3:30 AM IST the next day
+      const tokenExpiry = new Date();
+      tokenExpiry.setDate(tokenExpiry.getDate() + 1);
+      tokenExpiry.setHours(3, 30, 0, 0); // 3:30 AM IST next day
+
+      if (tokenExpiry < new Date()) {
+        // If it's already past 3:30 AM, set to the day after
+        tokenExpiry.setDate(tokenExpiry.getDate() + 1);
+      }
+
+      // For sandbox tokens, we set a longer expiry (30 days)
+      if (environment === EnvironmentType.SANDBOX) {
+        tokenExpiry.setDate(tokenExpiry.getDate() + 30);
+      }
+
+      this.state = {
+        accessToken: credentials.accessToken,
+        tokenExpiry,
+        isAuthorized: true
+      };
+
+      console.info(`Initialized auth manager with pre-configured access token (expires ${tokenExpiry.toISOString()})`);
+    }
   }
 
   /**
@@ -30,11 +68,36 @@ export class UpstoxAuthManager extends EventEmitter {
    * Get access token, checking for expiry
    */
   public async getAccessToken(): Promise<string> {
-    // If using sandbox mode, return the sandbox token
-    if (this.config.useSandbox && this.config.sandboxToken) {
-      return this.config.sandboxToken;
+    const { environment, authMethod } = config.upstox;
+    const credentials = getActiveCredentials(config);
+    
+    // If using direct access token configuration, return it
+    if (authMethod === AuthMethod.ACCESS_TOKEN) {
+      // If token in state, use it
+      if (this.state.accessToken && this.state.tokenExpiry && this.state.tokenExpiry > new Date()) {
+        return this.state.accessToken;
+      }
+      
+      // If token provided in config, use it
+      if (credentials.accessToken) {
+        // Update state before returning
+        this.state.accessToken = credentials.accessToken;
+        
+        // Calculate expiry date
+        const tokenExpiry = new Date();
+        tokenExpiry.setDate(tokenExpiry.getDate() + (environment === EnvironmentType.SANDBOX ? 30 : 1));
+        tokenExpiry.setHours(3, 30, 0, 0);
+        
+        this.state.tokenExpiry = tokenExpiry;
+        this.state.isAuthorized = true;
+        
+        return credentials.accessToken;
+      }
+      
+      throw new Error('Access token not found in configuration or state');
     }
-
+    
+    // Using API key + secret flow
     // Check if token exists and is valid
     if (this.state.accessToken && this.state.tokenExpiry && this.state.tokenExpiry > new Date()) {
       return this.state.accessToken;
@@ -53,11 +116,13 @@ export class UpstoxAuthManager extends EventEmitter {
    * Get the authorization URL for Upstox login
    */
   public getAuthorizationUrl(): string {
+    const credentials = getActiveCredentials(config);
+    
     const params = new URLSearchParams({
-      client_id: this.config.apiKey,
-      redirect_uri: this.config.redirectUri,
+      client_id: credentials.apiKey,
+      redirect_uri: config.upstox.redirectUri,
       response_type: 'code',
-      scope: 'orders holdings profile'
+      scope: 'orders holdings positions funds profile'
     });
 
     return `https://api.upstox.com/v2/login/authorization?${params.toString()}`;
@@ -68,14 +133,16 @@ export class UpstoxAuthManager extends EventEmitter {
    */
   public async authenticateWithCode(authCode: string): Promise<UpstoxAuthState> {
     try {
+      const credentials = getActiveCredentials(config);
+      
       const tokenUrl = 'https://api.upstox.com/v2/login/authorization/token';
       const response = await axios.post<UpstoxToken>(
         tokenUrl,
         new URLSearchParams({
           code: authCode,
-          client_id: this.config.apiKey,
-          client_secret: this.config.apiSecret,
-          redirect_uri: this.config.redirectUri,
+          client_id: credentials.apiKey,
+          client_secret: credentials.apiSecret,
+          redirect_uri: config.upstox.redirectUri,
           grant_type: 'authorization_code'
         }).toString(),
         {
@@ -124,15 +191,27 @@ export class UpstoxAuthManager extends EventEmitter {
   }
 
   /**
-   * Set the sandbox token directly
-   * This is used when running in sandbox mode
+   * Set a token directly
    */
-  public setSandboxToken(token: string): void {
-    if (!this.config.useSandbox) {
-      throw new Error('Cannot set sandbox token when not in sandbox mode');
+  public setToken(token: string, expiryDays: number = 1): void {
+    // Calculate expiry date
+    const tokenExpiry = new Date();
+    tokenExpiry.setDate(tokenExpiry.getDate() + expiryDays);
+    
+    if (expiryDays === 1) {
+      // For 1-day tokens, set standard Upstox expiry time
+      tokenExpiry.setHours(3, 30, 0, 0);
     }
 
-    this.config.sandboxToken = token;
+    // Update state
+    this.state = {
+      accessToken: token,
+      tokenExpiry,
+      isAuthorized: true
+    };
+    
+    this.emit('auth_change', this.state);
+    console.info(`Token set manually (expires ${tokenExpiry.toISOString()})`);
   }
 
   /**
