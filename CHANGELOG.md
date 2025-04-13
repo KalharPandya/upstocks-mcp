@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Added support for Claude integration via stdin/stdout transport for MCP
+- Added environment variables `MCP_STDOUT_ONLY` and `MCP_NO_CONSOLE_LOG` to control output redirection
 - Added dedicated "funds" resource to check available balance and margin information
 - Added historical data (OHLC candles) resource with date range and interval selection
 - Added support for more time intervals (1min, 5min, 15min, 30min, 1hr, 1day, 1week, 1month)
+- Added automatic log redirection to stderr when running as MCP server with Claude
 
 ### Fixed
 - Fixed funds endpoint from `/user/funds-and-margin` to `/user/get-funds-and-margin` to match official Upstox API
