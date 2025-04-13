@@ -72,15 +72,18 @@ export class McpServer {
       } catch (error) {
         console.error('Error processing request:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const response: any = {
+        
+        // Use any type to bypass type checking
+        const errorResponse: any = {
           jsonrpc: '2.0',
-          id: req.body.id || 0, // Use 0 as a default ID instead of null
+          id: req.body.id || 0,
           error: {
             code: -32603,
             message: `Internal error: ${errorMessage}`
           }
         };
-        res.status(500).json(response);
+        
+        res.status(500).json(errorResponse);
       }
     });
 
@@ -157,8 +160,8 @@ export class McpServer {
           console.error('WebSocket error:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
           
-          // Send error response - use 0 instead of null for id
-          const errorResponse: any = {
+          // Create error response with a default ID of 0
+          const errorData = {
             jsonrpc: '2.0',
             id: 0,
             error: {
@@ -167,7 +170,7 @@ export class McpServer {
             }
           };
           
-          ws.send(JSON.stringify(errorResponse));
+          ws.send(JSON.stringify(errorData));
         }
       });
       
