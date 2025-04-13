@@ -4,7 +4,8 @@ import {
   JsonRpcResponse, 
   McpSession,
   McpMethodHandlers,
-  McpCapabilities
+  McpCapabilities,
+  McpInitializeParams
 } from './types';
 
 // Store active sessions
@@ -21,6 +22,7 @@ const SESSION_EXPIRY_TIME = 60 * 60 * 1000;
  */
 export class McpCore {
   private methodHandlers: Partial<McpMethodHandlers> = {};
+  private serverCapabilities: McpCapabilities | null = null;
 
   constructor() {
     // Start session cleanup timer
@@ -31,10 +33,48 @@ export class McpCore {
    * Initialize the server with capabilities
    */
   initialize(capabilities: McpCapabilities): void {
+    // Store server capabilities for later use
+    this.serverCapabilities = capabilities;
+    
     // Register core methods
     this.registerMethod('mcp.discover', async () => capabilities);
     this.registerMethod('mcp.session.start', this.handleSessionStart.bind(this));
     this.registerMethod('mcp.session.end', this.handleSessionEnd.bind(this));
+    
+    // Register Claude-specific initialize method
+    this.registerMethod('initialize', this.handleClientInitialize.bind(this));
+  }
+
+  /**
+   * Handle Claude's initialize method
+   * This is Claude Desktop specific and not part of the standard MCP protocol
+   */
+  private async handleClientInitialize(params: McpInitializeParams): Promise<any> {
+    console.error('[DEBUG] Claude initialized with protocol version:', params.protocolVersion);
+    console.error('[DEBUG] Client info:', JSON.stringify(params.clientInfo));
+    
+    // We'll automatically start a session for the client
+    const sessionId = uuidv4();
+    
+    // Create new session
+    const session: McpSession = {
+      id: sessionId,
+      createdAt: new Date(),
+      lastAccessedAt: new Date(),
+      metadata: {
+        clientInfo: params.clientInfo,
+        protocolVersion: params.protocolVersion
+      }
+    };
+    
+    sessions.set(sessionId, session);
+    
+    // Return server capabilities
+    return {
+      session_id: sessionId,
+      server_info: this.serverCapabilities,
+      protocol_version: params.protocolVersion
+    };
   }
 
   /**
@@ -64,7 +104,12 @@ export class McpCore {
       }
 
       // Session validation for methods requiring a session
-      if (request.method !== 'mcp.discover' && request.method !== 'mcp.session.start') {
+      // Skip session validation for discover, session.start, and initialize methods
+      if (
+        request.method !== 'mcp.discover' && 
+        request.method !== 'mcp.session.start' && 
+        request.method !== 'initialize'
+      ) {
         const sessionId = request.params?.session_id;
         if (!sessionId) {
           return this.createErrorResponse(request.id, -32602, 'Session ID is required');
