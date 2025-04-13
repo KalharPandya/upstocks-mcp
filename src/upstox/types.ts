@@ -158,3 +158,51 @@ export interface UpstoxInstrument {
   lot_size: number;
   ISIN?: string;
 }
+
+// Historical data types
+export enum UpstoxCandleInterval {
+  MINUTE_1 = '1minute',
+  MINUTE_5 = '5minute',
+  MINUTE_10 = '10minute',
+  MINUTE_15 = '15minute',
+  MINUTE_30 = '30minute',
+  HOUR_1 = '1hour',
+  HOUR_2 = '2hour',
+  HOUR_3 = '3hour',
+  HOUR_4 = '4hour',
+  DAY_1 = '1day',
+  WEEK_1 = '1week',
+  MONTH_1 = '1month'
+}
+
+export interface UpstoxHistoricalDataParams {
+  instrument: string;              // Instrument token (e.g., "NSE_EQ|INFY")
+  interval: string;                // Time interval (see UpstoxCandleInterval)
+  from_date: string;               // Start date in YYYY-MM-DD format
+  to_date: string;                 // End date in YYYY-MM-DD format
+  format?: string;                 // Optional format (json or csv)
+}
+
+export interface UpstoxCandle {
+  timestamp: string;               // Candle timestamp  
+  open: number;                    // Open price
+  high: number;                    // High price
+  low: number;                     // Low price
+  close: number;                   // Close price
+  volume: number;                  // Volume traded
+  oi?: number;                     // Open interest (for derivatives)
+}
+
+export interface UpstoxFundsData {
+  used_margin: number;             // Margin already used
+  payin_amount: number;            // Amount added today  
+  span_margin: number;             // SPAN margin (for F&O)
+  adhoc_margin: number;            // Adhoc margin
+  notional_cash: number;           // Notional cash
+  available_margin: number;        // Available balance/margin for trading
+  exposure_margin: number;         // Exposure margin
+  available_cash: number;          // Available cash
+  used_options_premium: number;    // Premium used for options  
+  realized_mtm: number;            // Realized MTM
+  unrealized_mtm: number;          // Unrealized MTM
+}
