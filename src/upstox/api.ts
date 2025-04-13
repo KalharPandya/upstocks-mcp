@@ -90,6 +90,8 @@ export class UpstoxApiClient {
 
   /**
    * Get market data for specified instruments
+   * 
+   * Fixed to use the correct endpoint for market quotes
    */
   async getMarketData(instruments: string[]): Promise<Record<string, UpstoxMarketFeed>> {
     try {
@@ -110,6 +112,9 @@ export class UpstoxApiClient {
       
       console.log(`Fetching market data for: ${formattedInstruments.join(', ')}`);
       
+      // Use the correct endpoint for full market quotes
+      const endpoint = '/market-data/quotes';
+      
       // Build the parameters
       const params = new URLSearchParams();
       formattedInstruments.forEach(instrument => {
@@ -117,7 +122,7 @@ export class UpstoxApiClient {
       });
 
       // Make the request
-      const response = await this.client.get(`/market/quotes?${params.toString()}`);
+      const response = await this.client.get(`${endpoint}?${params.toString()}`);
       console.log('Market data response status:', response.status);
       
       return this.handleResponse(response);
