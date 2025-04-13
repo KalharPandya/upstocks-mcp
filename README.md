@@ -19,6 +19,7 @@ This project implements an MCP server that allows AI models like Claude to inter
 - **MCP Integration**: Standardized interface for AI model interaction
 - **Sandbox Support**: Test with Upstox sandbox environment
 - **Multiple Auth Methods**: Support for both direct token and OAuth flow
+- **Public URL Support**: Integrated ngrok tunneling for OAuth and webhooks
 
 ## Getting Started
 
@@ -27,6 +28,7 @@ This project implements an MCP server that allows AI models like Claude to inter
 - Node.js 16 or higher
 - Upstox developer account
 - API credentials (key, secret, tokens)
+- For tunneling: Internet connection for ngrok (optional)
 
 ### Installation
 
@@ -91,12 +93,38 @@ LOG_LEVEL=info  # Options: debug, info, warn, error
 
 ### Usage
 
+There are several ways to run the server:
+
 ```bash
-# Start the MCP server
+# Start the MCP server (standard mode)
 npm start
+
+# Start in development mode
+npm run dev
+
+# Start with ngrok tunneling for OAuth and webhooks
+npm run dev:tunnel
 ```
 
-If running with the `api_key_secret` authentication method, you'll need to authenticate by visiting the URL displayed in the console when the server starts.
+When using the `dev:tunnel` option, the server will start ngrok and provide you with public URLs that can be used for:
+- OAuth redirect URL
+- Webhook URL for order updates
+- Notifier URL for access token notifications
+
+These URLs can be used directly in your Upstox app configuration.
+
+### Ngrok Commands for Upstox App Configuration
+
+When using ngrok with the MCP server, you'll get these URLs automatically. The server will display them in the console:
+
+```
+Use the following URLs for Upstox API configuration:
+Redirect URL: https://xxxx-xxx-xx-xx.ngrok-free.app/callback
+Webhook URL: https://xxxx-xxx-xx-xx.ngrok-free.app/webhook
+Notifier URL: https://xxxx-xxx-xx-xx.ngrok-free.app/notifier
+```
+
+You can use these URLs when configuring your Upstox app in the developer portal.
 
 ### Testing
 
@@ -158,6 +186,10 @@ The project follows a modular architecture with clear separation of concerns:
 - **HTTP API**: JSON-RPC over HTTP
 - **WebSocket**: Real-time communication
 - **Authentication**: OAuth callback handling
+- **Webhooks**: Handles order updates and notifications
+
+### Utils
+- **Tunnel**: Manages ngrok tunneling for public URL access
 
 ## Available Resources
 
@@ -198,6 +230,8 @@ upstocks-mcp/
 │   │   ├── resources.ts      # MCP resource implementations
 │   │   ├── tools.ts          # MCP tool implementations
 │   │   └── types.ts          # Type definitions for MCP
+│   ├── utils/
+│   │   └── tunnel.ts         # Ngrok tunnel management
 │   └── test/
 │       └── interactive.ts    # Interactive test client
 └── [Other configuration files]
@@ -208,6 +242,9 @@ upstocks-mcp/
 ```bash
 # Run with ts-node for development
 npm run dev
+
+# Run with ngrok tunnel for public access
+npm run dev:tunnel
 
 # Run the interactive test client
 npm run test
