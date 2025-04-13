@@ -12,10 +12,48 @@ function hasFlag(flag: string): boolean {
 }
 
 /**
+ * Initialize logger to support MCP protocol over standard streams
+ * 
+ * This redirects normal console logs to stderr when running in MCP mode
+ * so that stdout can be reserved for JSON-RPC messages.
+ */
+function initializeMcpLogger(): void {
+  // Check if we're running in MCP mode (via Claude or another MCP client)
+  const isMcpMode = process.env.MCP_STDOUT_ONLY === 'true';
+  
+  if (isMcpMode) {
+    // Store original console methods
+    const originalConsoleLog = console.log;
+    const originalConsoleInfo = console.info;
+    const originalConsoleWarn = console.warn;
+    
+    // Redirect console.log to stderr with a prefix
+    console.log = (...args) => {
+      console.error('[LOG]', ...args);
+    };
+    
+    // Redirect console.info to stderr with a prefix
+    console.info = (...args) => {
+      console.error('[INFO]', ...args);
+    };
+    
+    // Redirect console.warn to stderr with a prefix
+    console.warn = (...args) => {
+      console.error('[WARN]', ...args);
+    };
+    
+    console.error('[INFO] MCP mode detected, redirecting logs to stderr');
+  }
+}
+
+/**
  * Main entry point for the Upstox MCP server
  */
 async function main() {
   try {
+    // Initialize MCP logger first
+    initializeMcpLogger();
+    
     console.log('Starting Upstox MCP server...');
     
     // Determine if ngrok should be used
