@@ -4,6 +4,7 @@ import axios from 'axios';
 import readline from 'readline';
 import WebSocket from 'ws';
 import { JsonRpcRequest, JsonRpcResponse } from '../mcp/types';
+import config from '../config/config';
 
 /**
  * Interactive test client for the Upstox MCP server
@@ -11,9 +12,9 @@ import { JsonRpcRequest, JsonRpcResponse } from '../mcp/types';
  */
 
 // Configuration
-const config = {
-  httpUrl: 'http://localhost:3000/mcp',
-  wsUrl: 'ws://localhost:3000',
+const testConfig = {
+  httpUrl: `http://${config.server.host || '0.0.0.0'}:${config.server.port}/mcp`,
+  wsUrl: `ws://${config.server.host || '0.0.0.0'}:${config.server.port}`,
   sessionId: ''
 };
 
@@ -42,7 +43,8 @@ async function makeHttpRequest(method: string, params?: any): Promise<any> {
   };
 
   try {
-    const response = await axios.post(config.httpUrl, request);
+    console.log(`Sending request to ${testConfig.httpUrl}...`);
+    const response = await axios.post(testConfig.httpUrl, request);
     const result = response.data as JsonRpcResponse;
     
     if (result.error) {
@@ -111,7 +113,8 @@ function makeWsRequest(method: string, params?: any): Promise<any> {
 // Initialize WebSocket connection
 async function connectWebSocket(): Promise<void> {
   return new Promise((resolve, reject) => {
-    ws = new WebSocket(config.wsUrl);
+    console.log(`Connecting to WebSocket at ${testConfig.wsUrl}...`);
+    ws = new WebSocket(testConfig.wsUrl);
     
     ws.on('open', () => {
       console.log('WebSocket connected');
@@ -168,17 +171,17 @@ async function testSession(): Promise<void> {
     // Start a new session
     console.log('Starting a new session...');
     const sessionResult = await makeHttpRequest('mcp.session.start');
-    config.sessionId = sessionResult.session_id;
-    console.log(`Session started with ID: ${config.sessionId}`);
+    testConfig.sessionId = sessionResult.session_id;
+    console.log(`Session started with ID: ${testConfig.sessionId}`);
     
     // Ask if user wants to end the session
     const endSession = await prompt('Do you want to end the session? (y/n): ');
     
     if (endSession.toLowerCase() === 'y') {
       console.log('Ending the session...');
-      await makeHttpRequest('mcp.session.end', { session_id: config.sessionId });
+      await makeHttpRequest('mcp.session.end', { session_id: testConfig.sessionId });
       console.log('Session ended');
-      config.sessionId = '';
+      testConfig.sessionId = '';
     }
   } catch (error) {
     console.error('Session test failed:', (error as Error).message);
@@ -191,15 +194,15 @@ async function testResourceList(): Promise<void> {
   
   try {
     // Ensure we have a session
-    if (!config.sessionId) {
+    if (!testConfig.sessionId) {
       const sessionResult = await makeHttpRequest('mcp.session.start');
-      config.sessionId = sessionResult.session_id;
-      console.log(`Started a new session with ID: ${config.sessionId}`);
+      testConfig.sessionId = sessionResult.session_id;
+      console.log(`Started a new session with ID: ${testConfig.sessionId}`);
     }
     
     // List resources
     console.log('Listing available resources...');
-    const resourcesResult = await makeHttpRequest('mcp.resources.list', { session_id: config.sessionId });
+    const resourcesResult = await makeHttpRequest('mcp.resources.list', { session_id: testConfig.sessionId });
     console.log('Available resources:');
     
     if (resourcesResult.resources && resourcesResult.resources.length > 0) {
@@ -220,10 +223,10 @@ async function testResourceGet(): Promise<void> {
   
   try {
     // Ensure we have a session
-    if (!config.sessionId) {
+    if (!testConfig.sessionId) {
       const sessionResult = await makeHttpRequest('mcp.session.start');
-      config.sessionId = sessionResult.session_id;
-      console.log(`Started a new session with ID: ${config.sessionId}`);
+      testConfig.sessionId = sessionResult.session_id;
+      console.log(`Started a new session with ID: ${testConfig.sessionId}`);
     }
     
     // Get user input for resource to retrieve
@@ -242,7 +245,7 @@ async function testResourceGet(): Promise<void> {
     // Retrieve the resource
     console.log(`Retrieving resource: ${resourceId}...`);
     const resourceResult = await makeHttpRequest('mcp.resources.get', { 
-      session_id: config.sessionId,
+      session_id: testConfig.sessionId,
       resource_id: resourceId,
       ...additionalParams
     });
@@ -272,15 +275,15 @@ async function testToolList(): Promise<void> {
   
   try {
     // Ensure we have a session
-    if (!config.sessionId) {
+    if (!testConfig.sessionId) {
       const sessionResult = await makeHttpRequest('mcp.session.start');
-      config.sessionId = sessionResult.session_id;
-      console.log(`Started a new session with ID: ${config.sessionId}`);
+      testConfig.sessionId = sessionResult.session_id;
+      console.log(`Started a new session with ID: ${testConfig.sessionId}`);
     }
     
     // List tools
     console.log('Listing available tools...');
-    const toolsResult = await makeHttpRequest('mcp.tools.list', { session_id: config.sessionId });
+    const toolsResult = await makeHttpRequest('mcp.tools.list', { session_id: testConfig.sessionId });
     console.log('Available tools:');
     
     if (toolsResult.tools && toolsResult.tools.length > 0) {
@@ -301,17 +304,17 @@ async function testToolExecution(): Promise<void> {
   
   try {
     // Ensure we have a session
-    if (!config.sessionId) {
+    if (!testConfig.sessionId) {
       const sessionResult = await makeHttpRequest('mcp.session.start');
-      config.sessionId = sessionResult.session_id;
-      console.log(`Started a new session with ID: ${config.sessionId}`);
+      testConfig.sessionId = sessionResult.session_id;
+      console.log(`Started a new session with ID: ${testConfig.sessionId}`);
     }
     
     // Get user input for tool to execute
     const toolId = await prompt('Enter tool ID to execute (e.g., place-order, cancel-order): ');
     
     // Build parameters based on tool selected
-    let params: any = { session_id: config.sessionId, tool_id: toolId };
+    let params: any = { session_id: testConfig.sessionId, tool_id: toolId };
     
     if (toolId === 'place-order') {
       const instrument = await prompt('Enter instrument (e.g., NSE_EQ|INFY): ');
@@ -365,8 +368,8 @@ async function showMainMenu(): Promise<void> {
     console.log('8. Disconnect WebSocket');
     console.log('9. Exit');
     
-    if (config.sessionId) {
-      console.log(`\nCurrent Session ID: ${config.sessionId}`);
+    if (testConfig.sessionId) {
+      console.log(`\nCurrent Session ID: ${testConfig.sessionId}`);
     }
     
     const choice = await prompt('\nEnter your choice (1-9): ');
@@ -417,8 +420,8 @@ async function showMainMenu(): Promise<void> {
 // Start the application
 (async () => {
   console.log('Interactive test client for Upstox MCP Server');
-  console.log(`HTTP Endpoint: ${config.httpUrl}`);
-  console.log(`WebSocket Endpoint: ${config.wsUrl}`);
+  console.log(`HTTP Endpoint: ${testConfig.httpUrl}`);
+  console.log(`WebSocket Endpoint: ${testConfig.wsUrl}`);
   
   try {
     await showMainMenu();
