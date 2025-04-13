@@ -72,9 +72,9 @@ export class McpServer {
       } catch (error) {
         console.error('Error processing request:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const response: JsonRpcResponse = {
+        const response: any = {
           jsonrpc: '2.0',
-          id: req.body.id || null,
+          id: req.body.id || 0, // Use 0 as a default ID instead of null
           error: {
             code: -32603,
             message: `Internal error: ${errorMessage}`
@@ -157,10 +157,10 @@ export class McpServer {
           console.error('WebSocket error:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
           
-          // Send error response
-          const errorResponse: JsonRpcResponse = {
+          // Send error response - use 0 instead of null for id
+          const errorResponse: any = {
             jsonrpc: '2.0',
-            id: null,
+            id: 0,
             error: {
               code: -32700,
               message: `Parse error: ${errorMessage}`
