@@ -18,6 +18,7 @@ This project implements an MCP server that allows AI models like Claude to inter
 - **Portfolio Management**: Track positions and performance
 - **MCP Integration**: Standardized interface for AI model interaction
 - **Sandbox Support**: Test with Upstox sandbox environment
+- **Multiple Auth Methods**: Support for both direct token and OAuth flow
 
 ## Getting Started
 
@@ -25,7 +26,7 @@ This project implements an MCP server that allows AI models like Claude to inter
 
 - Node.js 16 or higher
 - Upstox developer account
-- API credentials (key and secret)
+- API credentials (key, secret, tokens)
 
 ### Installation
 
@@ -49,16 +50,43 @@ npm run build
 
 ### Configuration
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the root directory with your credentials. This MCP server supports 6 different configuration options:
+
+1. **Live API with OAuth**: Use Live API credentials and perform OAuth flow
+2. **Live API with Token**: Use Live API credentials with pre-generated access token
+3. **Sandbox API with OAuth**: Use Sandbox API credentials and perform OAuth flow
+4. **Sandbox API with Token**: Use Sandbox API credentials with pre-generated access token
+5. **Live API with OAuth (user provides key/secret during execution)**: Dynamic credentials
+6. **Sandbox API with OAuth (user provides key/secret during execution)**: Dynamic credentials
+
+Here's a sample configuration:
 
 ```
-UPSTOX_API_KEY=your_api_key_here
-UPSTOX_API_SECRET=your_api_secret_here
+# Upstox Environment Configuration
+# Options: 'live' or 'sandbox'
+UPSTOX_ENVIRONMENT=sandbox
+
+# Authentication Method Configuration
+# Options: 'api_key_secret' or 'access_token'
+UPSTOX_AUTH_METHOD=access_token
+
+# Redirect URI for OAuth flow
 UPSTOX_REDIRECT_URI=http://localhost:3000/callback
-USE_SANDBOX=true
-UPSTOX_SANDBOX_TOKEN=your_sandbox_token_here
+
+# Live Environment Credentials
+API_KEY=your_live_api_key
+API_SECRET=your_live_api_secret
+ACCESS_TOKEN=your_live_access_token
+
+# Sandbox Environment Credentials
+SANDBOX_API_KEY=your_sandbox_api_key
+SANDBOX_API_SECRET=your_sandbox_api_secret
+SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
+
+# Server Configuration
 PORT=3000
 HOST=0.0.0.0
+LOG_LEVEL=info  # Options: debug, info, warn, error
 ```
 
 ### Usage
@@ -68,7 +96,7 @@ HOST=0.0.0.0
 npm start
 ```
 
-If running in live mode (USE_SANDBOX=false), you'll need to authenticate by visiting the URL displayed in the console.
+If running with the `api_key_secret` authentication method, you'll need to authenticate by visiting the URL displayed in the console when the server starts.
 
 ### Testing
 
@@ -100,11 +128,12 @@ To use this MCP server with Claude Desktop, add the following configuration to y
       "command": "npx",
       "args": ["-y", "upstocks-mcp"],
       "env": {
-        "UPSTOX_API_KEY": "your_api_key_here",
-        "UPSTOX_API_SECRET": "your_api_secret_here",
-        "UPSTOX_REDIRECT_URI": "http://localhost:3000/callback",
-        "USE_SANDBOX": "true",
-        "UPSTOX_SANDBOX_TOKEN": "your_sandbox_token_here"
+        "UPSTOX_ENVIRONMENT": "sandbox",
+        "UPSTOX_AUTH_METHOD": "access_token",
+        "SANDBOX_API_KEY": "your_sandbox_api_key",
+        "SANDBOX_API_SECRET": "your_sandbox_api_secret",
+        "SANDBOX_ACCESS_TOKEN": "your_sandbox_access_token",
+        "UPSTOX_REDIRECT_URI": "http://localhost:3000/callback"
       }
     }
   }
