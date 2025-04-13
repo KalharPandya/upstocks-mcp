@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Added support for Claude Desktop-specific `initialize` method for better integration
 - Added support for Claude integration via stdin/stdout transport for MCP
 - Added environment variables `MCP_STDOUT_ONLY` and `MCP_NO_CONSOLE_LOG` to control output redirection
 - Added dedicated "funds" resource to check available balance and margin information
