@@ -111,6 +111,12 @@ npm run dev
 
 # Start with ngrok tunneling for OAuth and webhooks
 npm run dev:tunnel
+
+# Start in MCP mode for integration with AI assistants
+npm run mcp
+
+# Start using the Claude wrapper (recommended for Claude Desktop)
+npm run claude
 ```
 
 When using the `dev:tunnel` option, the server will start ngrok and provide you with public URLs that can be used for:
@@ -119,19 +125,6 @@ When using the `dev:tunnel` option, the server will start ngrok and provide you 
 - Notifier URL for access token notifications
 
 These URLs can be used directly in your Upstox app configuration.
-
-### Ngrok Commands for Upstox App Configuration
-
-When using ngrok with the MCP server, you'll get these URLs automatically. The server will display them in the console:
-
-```
-Use the following URLs for Upstox API configuration:
-Redirect URL: https://xxxx-xxx-xx-xx.ngrok-free.app/callback
-Webhook URL: https://xxxx-xxx-xx-xx.ngrok-free.app/webhook
-Notifier URL: https://xxxx-xxx-xx-xx.ngrok-free.app/notifier
-```
-
-You can use these URLs when configuring your Upstox app in the developer portal.
 
 ### Testing
 
@@ -172,7 +165,7 @@ This MCP server is designed to work seamlessly with Claude Desktop, allowing Cla
      "mcpServers": {
        "upstox": {
          "command": "node",
-         "args": ["path/to/upstocks-mcp/dist/index.js"],
+         "args": ["path/to/upstocks-mcp/claude-wrapper.js"],
          "env": {
            "UPSTOX_ENVIRONMENT": "live",
            "UPSTOX_AUTH_METHOD": "access_token",
@@ -182,21 +175,30 @@ This MCP server is designed to work seamlessly with Claude Desktop, allowing Cla
            "ACCESS_TOKEN": "your_access_token",
            "SANDBOX_API_KEY": "your_sandbox_api_key",
            "SANDBOX_API_SECRET": "your_sandbox_api_secret",
-           "SANDBOX_ACCESS_TOKEN": "your_sandbox_access_token",
-           "PORT": "3000",
-           "HOST": "0.0.0.0",
-           "LOG_LEVEL": "debug",
-           "MCP_STDOUT_ONLY": "true",
-           "MCP_NO_CONSOLE_LOG": "true"
+           "SANDBOX_ACCESS_TOKEN": "your_sandbox_access_token"
          }
        }
      }
    }
    ```
    
-   Make sure to replace `"path/to/upstocks-mcp/dist/index.js"` with the actual path to your built JavaScript file.
+   Make sure to replace the credential placeholders with your actual Upstox API credentials.
 
-3. **Using with Claude**:
+3. **Important: Using the Wrapper Script**
+
+   We've created a special wrapper script (`claude-wrapper.js`) that ensures proper communication with Claude Desktop. This script:
+   
+   - Properly isolates stdout/stderr to prevent parsing errors
+   - Logs all communication to a debug file for troubleshooting
+   - Handles the Claude-specific initialization protocol
+   
+   **It is strongly recommended to use this wrapper when integrating with Claude.**
+
+4. **Debug Logs**
+
+   The wrapper script creates a debug log file at `claude-mcp-debug.log` in the project directory. This is useful for troubleshooting if you encounter any issues with the Claude integration.
+
+5. **Using with Claude**:
 
    Once configured, you can ask Claude to:
    - Check your portfolio positions
@@ -286,6 +288,7 @@ upstocks-mcp/
 │   │   └── tunnel.ts        # Ngrok tunnel management
 │   └── test/
 │       └── interactive.ts   # Interactive test client
+├── claude-wrapper.js        # Wrapper script for Claude Desktop integration
 └── [Other configuration files]
 ```
 
@@ -300,7 +303,24 @@ npm run dev:tunnel
 
 # Run the interactive test client
 npm run test
+
+# Run with Claude wrapper
+npm run claude
 ```
+
+## Troubleshooting Claude Integration
+
+If you're having trouble with Claude integration:
+
+1. **Check the debug log**: The Claude wrapper creates a log file at `claude-mcp-debug.log` which contains detailed information about the communication flow.
+
+2. **Make sure your API credentials are valid**: Test your API credentials using the interactive test client (`npm run test`) before trying to use them with Claude.
+
+3. **Use the wrapper script**: Always use the `claude-wrapper.js` script for Claude integration as it properly isolates stdout/stderr streams.
+
+4. **Verify the path**: Make sure the path in your Claude Desktop configuration points to the actual location of the wrapper script.
+
+5. **Build first**: If using the built version, make sure to run `npm run build` before trying to use the wrapper.
 
 ## License
 
