@@ -6,7 +6,8 @@ import {
   UpstoxPosition,
   UpstoxHolding,
   UpstoxInstrument,
-  UpstoxMarketFeed
+  UpstoxMarketFeed,
+  UpstoxHistoricalDataParams
 } from './types';
 import config, { EnvironmentType } from '../config/config';
 import endpoints, { buildUrl } from './endpoints';
@@ -86,6 +87,63 @@ export class UpstoxApiClient {
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch user profile');
+    }
+  }
+
+  /**
+   * Get funds and margin information
+   * 
+   * Retrieves user's funds, margins, and available balance
+   */
+  async getFunds(): Promise<any> {
+    try {
+      const response = await this.client.get(endpoints.user.funds);
+      return this.handleResponse(response);
+    } catch (error) {
+      return this.handleApiError(error, 'Failed to fetch funds and margin information');
+    }
+  }
+
+  /**
+   * Get historical candle data for an instrument
+   * 
+   * @param params Historical data parameters (instrument, interval, from_date, to_date)
+   */
+  async getHistoricalData(params: UpstoxHistoricalDataParams): Promise<any> {
+    try {
+      // Required API version header
+      const headers = {
+        'Api-Version': '2.0'
+      };
+
+      // Format instrument if needed
+      if (!params.instrument.includes('|')) {
+        params.instrument = `NSE_EQ|${params.instrument}`;
+      }
+      
+      // Build query parameters
+      const queryParams: Record<string, string> = {
+        instrument: params.instrument,
+        interval: params.interval,
+        to_date: params.to_date,
+        from_date: params.from_date
+      };
+      
+      // Add optional parameters if provided
+      if (params.format) {
+        queryParams.format = params.format;
+      }
+      
+      console.log(`Fetching historical data for ${params.instrument} with interval ${params.interval}`);
+      console.log(`Date range: ${params.from_date} to ${params.to_date}`);
+      
+      const url = buildUrl(endpoints.marketData.candle, queryParams);
+      const response = await this.client.get(url, { headers });
+      
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Error fetching historical data:', error);
+      return this.handleApiError(error, 'Failed to fetch historical data');
     }
   }
 
@@ -265,18 +323,6 @@ export class UpstoxApiClient {
     } catch (error) {
       console.error('Error fetching instruments:', error);
       return this.handleApiError(error, `Failed to fetch instruments for ${exchange}`);
-    }
-  }
-
-  /**
-   * Get fund details
-   */
-  async getFunds(): Promise<any> {
-    try {
-      const response = await this.client.get(endpoints.user.funds);
-      return this.handleResponse(response);
-    } catch (error) {
-      return this.handleApiError(error, 'Failed to fetch funds');
     }
   }
 
