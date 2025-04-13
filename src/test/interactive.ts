@@ -13,10 +13,23 @@ import config from '../config/config';
 
 // Configuration
 const testConfig = {
-  httpUrl: `http://${config.server.host || '0.0.0.0'}:${config.server.port}/mcp`,
-  wsUrl: `ws://${config.server.host || '0.0.0.0'}:${config.server.port}`,
+  // Use 0.0.0.0 or the actual server host
+  host: config.server.host || '127.0.0.1',
+  port: config.server.port,
+  httpUrl: '',
+  wsUrl: '',
   sessionId: ''
 };
+
+// Make sure the host is accessible
+// For local testing, if using 0.0.0.0 as host, use 127.0.0.1 instead
+if (testConfig.host === '0.0.0.0') {
+  testConfig.host = '127.0.0.1';
+}
+
+// Set up full URLs
+testConfig.httpUrl = `http://${testConfig.host}:${testConfig.port}/mcp`;
+testConfig.wsUrl = `ws://${testConfig.host}:${testConfig.port}`;
 
 // Create readline interface
 const rl = readline.createInterface({
@@ -420,6 +433,7 @@ async function showMainMenu(): Promise<void> {
 // Start the application
 (async () => {
   console.log('Interactive test client for Upstox MCP Server');
+  console.log(`Server Address: ${testConfig.host}:${testConfig.port}`);
   console.log(`HTTP Endpoint: ${testConfig.httpUrl}`);
   console.log(`WebSocket Endpoint: ${testConfig.wsUrl}`);
   
