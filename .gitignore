@@ -31,3 +31,9 @@ coverage/
 
 # Build artifacts
 build/
+
+# Temporary files
+*.new
+*.old
+*.bak
+*.tmp
