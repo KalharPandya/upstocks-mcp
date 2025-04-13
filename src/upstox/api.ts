@@ -132,9 +132,36 @@ export class UpstoxApiClient {
    */
   async placeOrder(orderParams: UpstoxOrderParams): Promise<UpstoxOrder> {
     try {
-      const response = await this.client.post('/order/place', orderParams);
-      return this.handleResponse(response);
+      console.log('Placing order with params:', JSON.stringify(orderParams, null, 2));
+      
+      // Format instrument token if needed
+      if (!orderParams.instrument_token.includes('|')) {
+        orderParams.instrument_token = `NSE_EQ|${orderParams.instrument_token}`;
+        console.log(`Formatted instrument token to: ${orderParams.instrument_token}`);
+      }
+      
+      // Convert order parameters to match Upstox API's expected format
+      const apiOrderParams = {
+        ...orderParams,
+        // Add additional fields that might be required by the API
+        variety: 'regular',  // default variety
+        quantity: Number(orderParams.quantity), // ensure quantity is a number
+        price: orderParams.price ? Number(orderParams.price) : undefined,
+        trigger_price: orderParams.trigger_price ? Number(orderParams.trigger_price) : undefined,
+      };
+      
+      console.log('Final order request:', JSON.stringify(apiOrderParams, null, 2));
+      
+      // Place the order
+      const response = await this.client.post('/order/place', apiOrderParams);
+      console.log('Order placement response:', response.status);
+      
+      const result = this.handleResponse<UpstoxOrder>(response);
+      console.log('Order placement result:', JSON.stringify(result, null, 2));
+      
+      return result;
     } catch (error) {
+      console.error('Error placing order:', error);
       return this.handleApiError(error, 'Failed to place order');
     }
   }
@@ -212,12 +239,12 @@ export class UpstoxApiClient {
       
       // Try both endpoints - v2 method requires a segment
       try {
-        // First try with master API
+        // First try with regular API
         const response = await this.client.get(`/market/instruments?exchange=${exchange}`);
         return this.handleResponse(response);
       } catch (error) {
-        // Fallback to index-based API
-        console.log('Falling back to instrument index API...');
+        // Fallback to master API
+        console.log('Falling back to instrument master API...');
         const response = await this.client.get(`/market/instruments/master?exchange=${exchange}`);
         return this.handleResponse(response);
       }
@@ -249,13 +276,20 @@ export class UpstoxApiClient {
       // Format a detailed error message
       let detailedMessage: string;
       if (error.response.data && typeof error.response.data === 'object') {
-        detailedMessage = JSON.stringify(error.response.data);
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          // Handle array of errors from the API
+          detailedMessage = error.response.data.errors.map((e: any) => e.message || e).join(', ');
+        } else if (error.response.data.message) {
+          detailedMessage = error.response.data.message;
+        } else {
+          detailedMessage = JSON.stringify(error.response.data);
+        }
       } else {
         detailedMessage = error.response.data?.message || error.message;
       }
       
       console.error(`API Error ${status}:`, detailedMessage);
-      throw new Error(`API Error ${status}: ${error.message}`);
+      throw new Error(`API Error ${status}: ${detailedMessage}`);
     } else {
       throw new Error(`${defaultMessage}: ${(error as Error).message}`);
     }
