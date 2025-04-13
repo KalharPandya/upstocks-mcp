@@ -7,7 +7,7 @@ import { mcpCore } from './mcp/core';
 import { mcpResources } from './mcp/resources';
 import { mcpTools } from './mcp/tools';
 import { authManager } from './upstox/auth';
-import config from './config/config';
+import config, { EnvironmentType } from './config/config';
 import { JsonRpcRequest, JsonRpcResponse } from './mcp/types';
 
 /**
@@ -115,7 +115,21 @@ export class McpServer {
 
     // Health check endpoint
     this.app.get('/health', async (_req, res) => {
-      res.json({ status: 'healthy' });
+      try {
+        const isApiReady = await authManager.getAuthState().isAuthorized;
+        
+        res.json({ 
+          status: 'healthy', 
+          mode: config.upstox.environment === EnvironmentType.SANDBOX ? 'sandbox' : 'live',
+          auth_method: config.upstox.authMethod,
+          api_ready: isApiReady
+        });
+      } catch (error) {
+        res.status(500).json({
+          status: 'unhealthy',
+          error: (error as Error).message
+        });
+      }
     });
   }
 
@@ -174,9 +188,9 @@ export class McpServer {
         this.isRunning = true;
         console.log(`Server running on http://${host}:${port}/mcp`);
         
-        if (config.upstox.useSandbox === true) {
-          console.log('Running in sandbox mode');
-        }
+        // Log environment information
+        console.log(`Environment: ${config.upstox.environment}`);
+        console.log(`Log Level: ${config.server.logLevel}`);
         
         resolve();
       });
