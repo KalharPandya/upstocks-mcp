@@ -13,7 +13,7 @@ export interface JsonRpcRequest {
 // JSON-RPC 2.0 Response structure
 export interface JsonRpcResponse {
   jsonrpc: '2.0';
-  id: string | number;
+  id: string | number | null;
   result?: any;
   error?: {
     code: number;
