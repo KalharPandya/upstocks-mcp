@@ -10,8 +10,9 @@ All notable changes to this project will be documented in this file.
 - Added support for more time intervals (1min, 5min, 15min, 30min, 1hr, 1day, 1week, 1month)
 
 ### Fixed
+- Fixed funds endpoint from `/user/funds-and-margin` to `/user/get-funds-and-margin` to match official Upstox API
 - Fixed market data API endpoint from `/market/quotes` to `/market-quote/quotes` to match the official Upstox Python SDK
-- Added proper API version header for market quotes requests
+- Added required API version header (`Api-Version: 2.0`) for funds and market data endpoints 
 - Fixed parameter format for market quotes (using 'symbol' instead of 'instrument_key')
 - Added better error handling and logging for API requests
 - Improved formatting of instrument keys (automatically adding exchange prefix when needed)
