@@ -7,8 +7,10 @@ A Model Context Protocol (MCP) server for Upstox API integration, providing mark
 This project implements an MCP server that allows AI models like Claude to interact with the Upstox trading platform. It provides:
 
 - Real-time market data access
+- Historical candle data with date range selection
 - Order placement and management
 - Portfolio tracking and analysis
+- Available funds and margin information
 - Seamless integration with Claude Desktop
 
 ## Features
@@ -16,6 +18,7 @@ This project implements an MCP server that allows AI models like Claude to inter
 - **Trading**: Place and manage orders through a simple interface
 - **Market Data**: Access real-time and historical market data
 - **Portfolio Management**: Track positions and performance
+- **Funds Information**: Check available balance and margin details
 - **MCP Integration**: Standardized interface for AI model interaction
 - **Sandbox Support**: Test with Upstox sandbox environment
 - **Multiple Auth Methods**: Support for both direct token and OAuth flow
@@ -89,6 +92,10 @@ SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
 PORT=3000
 HOST=0.0.0.0
 LOG_LEVEL=info  # Options: debug, info, warn, error
+
+# MCP Integration Options
+# MCP_STDOUT_ONLY=true      # Use this when integrating with Claude Desktop
+# MCP_NO_CONSOLE_LOG=true   # Redirect logs to stderr in MCP mode
 ```
 
 ### Usage
@@ -147,26 +154,68 @@ This is a great way to understand how the MCP interface works and verify that yo
 
 ## Claude Desktop Integration
 
-To use this MCP server with Claude Desktop, add the following configuration to your Claude Desktop MCP config:
+This MCP server is designed to work seamlessly with Claude Desktop, allowing Claude to access market data and execute trades directly from conversations.
 
-```json
-{
-  "mcpServers": {
-    "upstox": {
-      "command": "npx",
-      "args": ["-y", "upstocks-mcp"],
-      "env": {
-        "UPSTOX_ENVIRONMENT": "sandbox",
-        "UPSTOX_AUTH_METHOD": "access_token",
-        "SANDBOX_API_KEY": "your_sandbox_api_key",
-        "SANDBOX_API_SECRET": "your_sandbox_api_secret",
-        "SANDBOX_ACCESS_TOKEN": "your_sandbox_access_token",
-        "UPSTOX_REDIRECT_URI": "http://localhost:3000/callback"
-      }
-    }
-  }
-}
-```
+### Setup with Claude Desktop
+
+1. **Build the project first**:
+   ```bash
+   npm run build
+   ```
+
+2. **Configure Claude Desktop**:
+
+   Add the following configuration to your Claude Desktop MCP configuration (in Settings):
+
+   ```json
+   {
+     "mcpServers": {
+       "upstox": {
+         "command": "node",
+         "args": ["path/to/upstocks-mcp/dist/index.js"],
+         "env": {
+           "UPSTOX_ENVIRONMENT": "live",
+           "UPSTOX_AUTH_METHOD": "access_token",
+           "UPSTOX_REDIRECT_URI": "http://localhost:3000/callback",
+           "API_KEY": "your_api_key",
+           "API_SECRET": "your_api_secret",
+           "ACCESS_TOKEN": "your_access_token",
+           "SANDBOX_API_KEY": "your_sandbox_api_key",
+           "SANDBOX_API_SECRET": "your_sandbox_api_secret",
+           "SANDBOX_ACCESS_TOKEN": "your_sandbox_access_token",
+           "PORT": "3000",
+           "HOST": "0.0.0.0",
+           "LOG_LEVEL": "debug",
+           "MCP_STDOUT_ONLY": "true",
+           "MCP_NO_CONSOLE_LOG": "true"
+         }
+       }
+     }
+   }
+   ```
+   
+   Make sure to replace `"path/to/upstocks-mcp/dist/index.js"` with the actual path to your built JavaScript file.
+
+3. **Using with Claude**:
+
+   Once configured, you can ask Claude to:
+   - Check your portfolio positions
+   - Get real-time market data for stocks
+   - Fetch historical data with custom date ranges
+   - Check your available balance
+   - Place and manage orders
+
+   Claude will use the MCP server to communicate with Upstox API automatically.
+
+### Example Claude Prompts
+
+Here are some examples of what you can ask Claude once the MCP is configured:
+
+- "What is my current available balance for trading?"
+- "Show me the market data for INFY and TCS stocks"
+- "What are my current positions in the market?"
+- "Show me the historical data for RELIANCE from April 1-10, 2025 with 1-day intervals"
+- "Place a market order to buy 1 share of INFY"
 
 ## Architecture
 
@@ -196,6 +245,8 @@ The project follows a modular architecture with clear separation of concerns:
 The MCP server exposes the following resources:
 
 - `market-data`: Real-time market data for specified instruments
+- `historical-data`: Historical OHLC candle data with date range and interval selection
+- `funds`: Available balance, margin information, and account funds
 - `positions`: Current positions in the portfolio
 - `holdings`: Current holdings in the portfolio
 - `orders`: List of orders
@@ -217,23 +268,24 @@ The MCP server provides the following tools:
 ```
 upstocks-mcp/
 ├── src/
-│   ├── index.ts              # Main entry point 
-│   ├── server.ts             # MCP server implementation
+│   ├── index.ts             # Main entry point 
+│   ├── server.ts            # MCP server implementation
 │   ├── config/
-│   │   └── config.ts         # Configuration management
+│   │   └── config.ts        # Configuration management
 │   ├── upstox/
-│   │   ├── api.ts            # Upstox API client
-│   │   ├── auth.ts           # Authentication manager
-│   │   └── types.ts          # Type definitions for Upstox
+│   │   ├── api.ts           # Upstox API client
+│   │   ├── auth.ts          # Authentication manager
+│   │   ├── types.ts         # Type definitions for Upstox
+│   │   └── endpoints.ts     # API endpoints management
 │   ├── mcp/
-│   │   ├── core.ts           # Core MCP methods
-│   │   ├── resources.ts      # MCP resource implementations
-│   │   ├── tools.ts          # MCP tool implementations
-│   │   └── types.ts          # Type definitions for MCP
+│   │   ├── core.ts          # Core MCP methods
+│   │   ├── resources.ts     # MCP resource implementations
+│   │   ├── tools.ts         # MCP tool implementations
+│   │   └── types.ts         # Type definitions for MCP
 │   ├── utils/
-│   │   └── tunnel.ts         # Ngrok tunnel management
+│   │   └── tunnel.ts        # Ngrok tunnel management
 │   └── test/
-│       └── interactive.ts    # Interactive test client
+│       └── interactive.ts   # Interactive test client
 └── [Other configuration files]
 ```
 
