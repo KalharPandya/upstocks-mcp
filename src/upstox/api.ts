@@ -67,6 +67,12 @@ export class UpstoxApiClient {
     } else if (response.data && response.data.status === 'error') {
       throw new Error(response.data.message || 'Unknown API error');
     }
+    
+    // Direct response for non-standard formats
+    if (response.data && typeof response.data === 'object') {
+      return response.data as T;
+    }
+    
     return response.data;
   }
 
@@ -87,14 +93,36 @@ export class UpstoxApiClient {
    */
   async getMarketData(instruments: string[]): Promise<Record<string, UpstoxMarketFeed>> {
     try {
+      if (!instruments || instruments.length === 0) {
+        throw new Error('No instruments provided');
+      }
+      
+      // Format each instrument correctly
+      const formattedInstruments = instruments.map(instrument => {
+        // Check if the instrument already contains a pipe (|) character
+        if (instrument.includes('|')) {
+          return instrument;
+        }
+        
+        // Otherwise, default to NSE_EQ exchange if none provided
+        return `NSE_EQ|${instrument}`;
+      });
+      
+      console.log(`Fetching market data for: ${formattedInstruments.join(', ')}`);
+      
+      // Build the parameters
       const params = new URLSearchParams();
-      instruments.forEach(instrument => {
+      formattedInstruments.forEach(instrument => {
         params.append('instrument_key', instrument);
       });
 
-      const response = await this.client.get(`/market/quote/full?${params.toString()}`);
+      // Make the request
+      const response = await this.client.get(`/market/quotes?${params.toString()}`);
+      console.log('Market data response status:', response.status);
+      
       return this.handleResponse(response);
     } catch (error) {
+      console.error('Error fetching market data:', error);
       return this.handleApiError(error, 'Failed to fetch market data');
     }
   }
@@ -152,7 +180,7 @@ export class UpstoxApiClient {
    */
   async getPositions(): Promise<UpstoxPosition[]> {
     try {
-      const response = await this.client.get('/trading/positions');
+      const response = await this.client.get('/portfolio/positions');
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch positions');
@@ -176,10 +204,26 @@ export class UpstoxApiClient {
    */
   async getInstruments(exchange: string): Promise<UpstoxInstrument[]> {
     try {
-      const response = await this.client.get(`/market/instruments/master?exchange=${exchange}`);
-      return this.handleResponse(response);
+      // Format exchange if needed
+      if (!exchange.includes('_')) {
+        exchange = exchange.toUpperCase() + '_EQ';
+      }
+      console.log(`Fetching instruments for exchange: ${exchange}`);
+      
+      // Try both endpoints - v2 method requires a segment
+      try {
+        // First try with master API
+        const response = await this.client.get(`/market/instruments?exchange=${exchange}`);
+        return this.handleResponse(response);
+      } catch (error) {
+        // Fallback to index-based API
+        console.log('Falling back to instrument index API...');
+        const response = await this.client.get(`/market/instruments/master?exchange=${exchange}`);
+        return this.handleResponse(response);
+      }
     } catch (error) {
-      return this.handleApiError(error, 'Failed to fetch instruments');
+      console.error('Error fetching instruments:', error);
+      return this.handleApiError(error, `Failed to fetch instruments for ${exchange}`);
     }
   }
 
@@ -201,8 +245,17 @@ export class UpstoxApiClient {
   private handleApiError(error: any, defaultMessage: string): never {
     if (axios.isAxiosError(error) && error.response) {
       const status = error.response.status;
-      const message = error.response.data?.message || error.message;
-      throw new Error(`API Error ${status}: ${message}`);
+      
+      // Format a detailed error message
+      let detailedMessage: string;
+      if (error.response.data && typeof error.response.data === 'object') {
+        detailedMessage = JSON.stringify(error.response.data);
+      } else {
+        detailedMessage = error.response.data?.message || error.message;
+      }
+      
+      console.error(`API Error ${status}:`, detailedMessage);
+      throw new Error(`API Error ${status}: ${error.message}`);
     } else {
       throw new Error(`${defaultMessage}: ${(error as Error).message}`);
     }
