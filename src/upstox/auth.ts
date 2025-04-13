@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { UpstoxToken, UpstoxAuthState } from './types';
 import config, { 
   AuthMethod, 
-  EnvironmentType, 
+  EnvironmentType,
   getCredentials
 } from '../config/config';
 
