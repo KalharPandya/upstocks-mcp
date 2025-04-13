@@ -3,14 +3,21 @@
  * 
  * This file defines all the API endpoints used in the application.
  * Centralizing these endpoints makes it easier to update when the API changes.
+ * 
+ * These endpoints match the official Upstox API documentation and SDK
  */
 
 const endpoints = {
+  // Market Quote - based on official Upstox Python SDK
+  marketQuote: {
+    quotes: '/market-quote/quotes',       // Full market quotes
+    ohlc: '/market-quote/ohlc',           // OHLC quotes
+    ltp: '/market-quote/ltp',             // Last traded price
+  },
+  
   // Market Data
   marketData: {
-    quotes: '/market-data/quotes',
-    ohlc: '/market-data/ohlc',
-    historicalCandle: '/market-data/candle',
+    candle: '/market-data/candle',         // Historical candle data
   },
   
   // Orders
