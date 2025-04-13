@@ -111,6 +111,16 @@ export interface McpPromptTemplate {
   metadata?: Record<string, any>;
 }
 
+// Claude-specific initialization parameters
+export interface McpInitializeParams {
+  protocolVersion: string;
+  capabilities: Record<string, any>;
+  clientInfo: {
+    name: string;
+    version: string;
+  };
+}
+
 // MCP Method handlers
 export interface McpMethodHandlers {
   'mcp.discover': () => Promise<McpCapabilities>;
@@ -122,4 +132,6 @@ export interface McpMethodHandlers {
   'mcp.tools.execute': (params: { session_id: string, tool_id: string, [key: string]: any }) => Promise<McpToolResult>;
   'mcp.prompts.list': (params: { session_id: string }) => Promise<{ prompts: McpPrompt[] }>;
   'mcp.prompts.get': (params: { session_id: string, prompt_id: string, [key: string]: any }) => Promise<McpPromptTemplate>;
+  // Add support for Claude's initialize method
+  'initialize': (params: McpInitializeParams) => Promise<any>;
 }
