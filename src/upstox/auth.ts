@@ -3,8 +3,8 @@ import { EventEmitter } from 'events';
 import { UpstoxToken, UpstoxAuthState } from './types';
 import config, { 
   AuthMethod, 
-  EnvironmentType,
-  getActiveCredentials 
+  EnvironmentType, 
+  getCredentials
 } from '../config/config';
 
 /**
@@ -27,7 +27,7 @@ export class UpstoxAuthManager extends EventEmitter {
    */
   private initializeFromConfig(): void {
     const { environment, authMethod } = config.upstox;
-    const credentials = getActiveCredentials(config);
+    const credentials = getCredentials(config);
     
     // If using direct access token, initialize the state
     if (authMethod === AuthMethod.ACCESS_TOKEN && credentials.accessToken) {
@@ -69,7 +69,7 @@ export class UpstoxAuthManager extends EventEmitter {
    */
   public async getAccessToken(): Promise<string> {
     const { environment, authMethod } = config.upstox;
-    const credentials = getActiveCredentials(config);
+    const credentials = getCredentials(config);
     
     // If using direct access token configuration, return it
     if (authMethod === AuthMethod.ACCESS_TOKEN) {
@@ -116,7 +116,7 @@ export class UpstoxAuthManager extends EventEmitter {
    * Get the authorization URL for Upstox login
    */
   public getAuthorizationUrl(): string {
-    const credentials = getActiveCredentials(config);
+    const credentials = getCredentials(config);
     
     const params = new URLSearchParams({
       client_id: credentials.apiKey,
@@ -133,7 +133,7 @@ export class UpstoxAuthManager extends EventEmitter {
    */
   public async authenticateWithCode(authCode: string): Promise<UpstoxAuthState> {
     try {
-      const credentials = getActiveCredentials(config);
+      const credentials = getCredentials(config);
       
       const tokenUrl = 'https://api.upstox.com/v2/login/authorization/token';
       const response = await axios.post<UpstoxToken>(

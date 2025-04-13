@@ -114,8 +114,8 @@ export class McpServer {
     });
 
     // Health check endpoint
-    this.app.get('/health', (_req, res) => {
-      res.json({ status: 'healthy', mode: config.upstox.useSandbox ? 'sandbox' : 'live' });
+    this.app.get('/health', async (_req, res) => {
+      res.json({ status: 'healthy' });
     });
   }
 
@@ -172,9 +172,9 @@ export class McpServer {
       
       this.server.listen(port, host, () => {
         this.isRunning = true;
-        console.log(`Server running on http://${host}:${port}`);
+        console.log(`Server running on http://${host}:${port}/mcp`);
         
-        if (config.upstox.useSandbox) {
+        if (config.upstox.useSandbox === true) {
           console.log('Running in sandbox mode');
         }
         
@@ -207,7 +207,7 @@ export class McpServer {
 }
 
 // Create and export a function to start the server
-export async function startServer(): Promise<McpServer> {
+export async function startMcpServer(): Promise<McpServer> {
   const server = new McpServer();
   await server.start();
   return server;

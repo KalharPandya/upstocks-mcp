@@ -13,7 +13,6 @@ async function main() {
     
     // Display configuration info
     console.log(`Server mode: ${config.upstox.useSandbox ? 'Sandbox' : 'Live'}`);
-    console.log(`API Key: ${config.upstox.apiKey}`);
     console.log(`Redirect URI: ${config.upstox.redirectUri}`);
     
     // Start the server
@@ -21,7 +20,7 @@ async function main() {
     
     // If using sandbox, log the authorization URL
     if (!config.upstox.useSandbox && !authManager.getAuthState().isAuthorized) {
-      const authUrl = authManager.getAuthorizationUrl();
+      const authUrl = await authManager.getAuthorizationUrl();
       console.log('\nAuthorization required. Please visit the following URL to authenticate:');
       console.log(authUrl);
     }

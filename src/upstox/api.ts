@@ -8,7 +8,7 @@ import {
   UpstoxInstrument,
   UpstoxMarketFeed
 } from './types';
-import config, { EnvironmentType } from '../config/config';
+import config, { EnvironmentType, UpstoxConfig } from '../config/config';
 
 /**
  * Upstox API client for interacting with the Upstox REST API
@@ -31,8 +31,9 @@ export class UpstoxApiClient {
     this.client.interceptors.request.use(async (config) => {
       // Only log the first API call
       if (!this.isInitialized) {
-        console.info(`Making API calls to ${this.baseUrl} (${config.upstox?.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);
-        this.isInitialized = true;
+        console.info(`Making API calls to ${this.baseUrl} (${config?.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);
+          const upstoxConfig = config.upstox as UpstoxConfig;
+          console.info(`Making API calls to ${this.baseUrl} (${upstoxConfig.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);          this.isInitialized = true;
       }
       
       try {
