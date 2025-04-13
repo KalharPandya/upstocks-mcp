@@ -1,6 +1,7 @@
 import { McpResource, McpResourceContent } from './types';
 import { upstoxApi } from '../upstox/api';
 import { mcpCore } from './core';
+import { UpstoxCandleInterval } from '../upstox/types';
 
 /**
  * MCP Resources implementation for Upstox data
@@ -34,6 +35,31 @@ export class McpResources {
         }
       },
       {
+        id: 'historical-data',
+        name: 'Historical Data',
+        description: 'Historical OHLC candle data for a specific instrument and time range',
+        metadata: {
+          parameters: {
+            instrument: {
+              type: 'string',
+              description: 'Instrument symbol (e.g., "INFY" or "NSE_EQ|INFY")'
+            },
+            interval: {
+              type: 'string',
+              description: 'Time interval (1minute, 5minute, 15minute, 30minute, 1hour, 1day, 1week, 1month)'
+            },
+            from_date: {
+              type: 'string',
+              description: 'Start date in YYYY-MM-DD format'
+            },
+            to_date: {
+              type: 'string',
+              description: 'End date in YYYY-MM-DD format'
+            }
+          }
+        }
+      },
+      {
         id: 'positions',
         name: 'Positions',
         description: 'Current positions in the portfolio',
@@ -52,6 +78,11 @@ export class McpResources {
         id: 'profile',
         name: 'User Profile',
         description: 'User profile information',
+      },
+      {
+        id: 'funds',
+        name: 'Funds and Balance',
+        description: 'User funds, margins, and available balance information',
       },
       {
         id: 'instruments',
@@ -85,6 +116,9 @@ export class McpResources {
       case 'market-data':
         return await this.getMarketData(resourceParams);
       
+      case 'historical-data':
+        return await this.getHistoricalData(resourceParams);
+      
       case 'positions':
         return await this.getPositions();
       
@@ -96,6 +130,9 @@ export class McpResources {
       
       case 'profile':
         return await this.getProfile();
+        
+      case 'funds':
+        return await this.getFunds();
       
       case 'instruments':
         return await this.getInstruments(resourceParams);
@@ -153,6 +190,89 @@ export class McpResources {
       
       // Return a more useful error message
       throw new Error(`Failed to get market data: ${errorMessage}. Make sure you're using valid instrument symbols like "NSE_EQ|INFY" or just "INFY".`);
+    }
+  }
+
+  /**
+   * Get historical data for a specific instrument
+   */
+  private async getHistoricalData(params: any): Promise<McpResourceContent> {
+    // Validate parameters
+    if (!params.instrument) {
+      throw new Error('Instrument symbol is required');
+    }
+    
+    if (!params.interval) {
+      throw new Error('Interval is required (e.g., "1minute", "5minute", "1day")');
+    }
+    
+    if (!params.from_date) {
+      throw new Error('Start date (from_date) is required in YYYY-MM-DD format');
+    }
+    
+    if (!params.to_date) {
+      throw new Error('End date (to_date) is required in YYYY-MM-DD format');
+    }
+
+    // Check if interval is valid
+    const validIntervals = Object.values(UpstoxCandleInterval);
+    if (!validIntervals.includes(params.interval)) {
+      throw new Error(`Invalid interval: ${params.interval}. Valid intervals are: ${validIntervals.join(', ')}`);
+    }
+
+    try {
+      console.log(`MCP Resource: Requesting historical data for ${params.instrument} with interval ${params.interval}`);
+      console.log(`Time range: ${params.from_date} to ${params.to_date}`);
+      
+      const historicalData = await upstoxApi.getHistoricalData({
+        instrument: params.instrument,
+        interval: params.interval,
+        from_date: params.from_date,
+        to_date: params.to_date,
+        format: params.format
+      });
+      
+      return {
+        content: JSON.stringify(historicalData, null, 2),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting historical data:', errorMessage);
+      
+      throw new Error(`Failed to get historical data: ${errorMessage}. Make sure the instrument, interval, and dates are valid.`);
+    }
+  }
+  
+  /**
+   * Get funds and margin information
+   */
+  private async getFunds(): Promise<McpResourceContent> {
+    try {
+      console.log('MCP Resource: Requesting funds and margin information');
+      
+      // Fetch funds data
+      const fundsData = await upstoxApi.getFunds();
+      
+      // Extract key information including available balance
+      const formattedData = {
+        ...fundsData,
+        // Add a quick access field for available balance
+        summary: {
+          available_balance: fundsData.available_margin || fundsData.available_cash || 0,
+          total_margin_used: fundsData.used_margin || 0,
+          available_cash: fundsData.available_cash || 0
+        }
+      };
+      
+      return {
+        content: JSON.stringify(formattedData, null, 2),
+        content_type: 'application/json'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error getting funds and margins:', errorMessage);
+      throw new Error(`Failed to get funds information: ${errorMessage}`);
     }
   }
 
