@@ -19,14 +19,15 @@ async function main() {
     // Start the server
     const server = await startMcpServer();
     
-    // If not using token auth and not already authorized, show authorization URL
+    // If not already authorized, show authorization URL
     if (!authManager.getAuthState().isAuthorized) {
       try {
         const authUrl = authManager.getAuthorizationUrl();
         console.log('\nAuthorization required. Please visit the following URL to authenticate:');
         console.log(authUrl);
-      } catch (error: any) {
-        console.warn('Unable to generate authorization URL:', error?.message || 'Unknown error');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn('Unable to generate authorization URL:', errorMessage);
       }
     }
     
@@ -42,8 +43,9 @@ async function main() {
       await server.stop();
       process.exit(0);
     });
-  } catch (error: any) {
-    console.error('Failed to start server:', error?.message || 'Unknown error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Failed to start server:', errorMessage);
     process.exit(1);
   }
 }
