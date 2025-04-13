@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
-- Fixed market data API endpoint from `/market/quotes` to `/market-data/quotes` to match the current Upstox API
+- Fixed market data API endpoint from `/market/quotes` to `/market-quote/quotes` to match the official Upstox Python SDK
+- Added proper API version header for market quotes requests
+- Fixed parameter format for market quotes (using 'symbol' instead of 'instrument_key')
 - Added better error handling and logging for API requests
 - Improved formatting of instrument keys (automatically adding exchange prefix when needed)
 
