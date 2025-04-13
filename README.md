@@ -70,6 +70,25 @@ npm start
 
 If running in live mode (USE_SANDBOX=false), you'll need to authenticate by visiting the URL displayed in the console.
 
+### Testing
+
+The project includes an interactive test client that allows you to test the MCP server functionality through a command-line interface:
+
+```bash
+# Run the interactive test client
+npm run test
+```
+
+The test client provides the following features:
+
+- Test MCP discovery to see server capabilities
+- Test session management (start/end)
+- Browse and retrieve available resources
+- List and execute available tools
+- Test both HTTP and WebSocket communication
+
+This is a great way to understand how the MCP interface works and verify that your server is functioning correctly.
+
 ## Claude Desktop Integration
 
 To use this MCP server with Claude Desktop, add the following configuration to your Claude Desktop MCP config:
@@ -145,11 +164,13 @@ upstocks-mcp/
 │   │   ├── api.ts            # Upstox API client
 │   │   ├── auth.ts           # Authentication manager
 │   │   └── types.ts          # Type definitions for Upstox
-│   └── mcp/
-│       ├── core.ts           # Core MCP methods
-│       ├── resources.ts      # MCP resource implementations
-│       ├── tools.ts          # MCP tool implementations
-│       └── types.ts          # Type definitions for MCP
+│   ├── mcp/
+│   │   ├── core.ts           # Core MCP methods
+│   │   ├── resources.ts      # MCP resource implementations
+│   │   ├── tools.ts          # MCP tool implementations
+│   │   └── types.ts          # Type definitions for MCP
+│   └── test/
+│       └── interactive.ts    # Interactive test client
 └── [Other configuration files]
 ```
 
@@ -158,6 +179,9 @@ upstocks-mcp/
 ```bash
 # Run with ts-node for development
 npm run dev
+
+# Run the interactive test client
+npm run test
 ```
 
 ## License
