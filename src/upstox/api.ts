@@ -8,6 +8,7 @@ import {
   UpstoxInstrument,
   UpstoxMarketFeed
 } from './types';
+import config, { EnvironmentType } from '../config/config';
 
 /**
  * Upstox API client for interacting with the Upstox REST API
@@ -15,6 +16,7 @@ import {
 export class UpstoxApiClient {
   private baseUrl = 'https://api.upstox.com/v2';
   private client: AxiosInstance;
+  private isInitialized = false;
 
   constructor() {
     this.client = axios.create({
@@ -27,9 +29,20 @@ export class UpstoxApiClient {
 
     // Add request interceptor to include the auth token
     this.client.interceptors.request.use(async (config) => {
-      const token = await authManager.getAccessToken();
-      config.headers.Authorization = `Bearer ${token}`;
-      return config;
+      // Only log the first API call
+      if (!this.isInitialized) {
+        console.info(`Making API calls to ${this.baseUrl} (${config.upstox?.environment === EnvironmentType.SANDBOX ? 'Sandbox' : 'Live'} mode)`);
+        this.isInitialized = true;
+      }
+      
+      try {
+        const token = await authManager.getAccessToken();
+        config.headers.Authorization = `Bearer ${token}`;
+        return config;
+      } catch (error) {
+        console.error('Authentication error:', error);
+        throw error;
+      }
     });
 
     // Add response interceptor to handle errors
@@ -65,7 +78,7 @@ export class UpstoxApiClient {
       const response = await this.client.get('/user/profile');
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch user profile');
+      return this.handleApiError(error, 'Failed to fetch user profile');
     }
   }
 
@@ -82,7 +95,7 @@ export class UpstoxApiClient {
       const response = await this.client.get(`/market/quote/full?${params.toString()}`);
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch market data');
+      return this.handleApiError(error, 'Failed to fetch market data');
     }
   }
 
@@ -94,7 +107,7 @@ export class UpstoxApiClient {
       const response = await this.client.post('/order/place', orderParams);
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to place order');
+      return this.handleApiError(error, 'Failed to place order');
     }
   }
 
@@ -106,7 +119,7 @@ export class UpstoxApiClient {
       const response = await this.client.get('/order/get-orders');
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch orders');
+      return this.handleApiError(error, 'Failed to fetch orders');
     }
   }
 
@@ -118,7 +131,7 @@ export class UpstoxApiClient {
       const response = await this.client.get(`/order/get-order-details?order_id=${orderId}`);
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch order details');
+      return this.handleApiError(error, 'Failed to fetch order details');
     }
   }
 
@@ -130,7 +143,7 @@ export class UpstoxApiClient {
       const response = await this.client.delete(`/order/cancel?order_id=${orderId}`);
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to cancel order');
+      return this.handleApiError(error, 'Failed to cancel order');
     }
   }
 
@@ -142,7 +155,7 @@ export class UpstoxApiClient {
       const response = await this.client.get('/trading/positions');
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch positions');
+      return this.handleApiError(error, 'Failed to fetch positions');
     }
   }
 
@@ -154,7 +167,7 @@ export class UpstoxApiClient {
       const response = await this.client.get('/portfolio/holdings');
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch holdings');
+      return this.handleApiError(error, 'Failed to fetch holdings');
     }
   }
 
@@ -166,7 +179,19 @@ export class UpstoxApiClient {
       const response = await this.client.get(`/market/instruments/master?exchange=${exchange}`);
       return this.handleResponse(response);
     } catch (error) {
-      this.handleApiError(error, 'Failed to fetch instruments');
+      return this.handleApiError(error, 'Failed to fetch instruments');
+    }
+  }
+
+  /**
+   * Get fund details
+   */
+  async getFunds(): Promise<any> {
+    try {
+      const response = await this.client.get('/user/funds-and-margin');
+      return this.handleResponse(response);
+    } catch (error) {
+      return this.handleApiError(error, 'Failed to fetch funds');
     }
   }
 
@@ -180,6 +205,18 @@ export class UpstoxApiClient {
       throw new Error(`API Error ${status}: ${message}`);
     } else {
       throw new Error(`${defaultMessage}: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Determines if the API is ready to use (authenticated)
+   */
+  async isReady(): Promise<boolean> {
+    try {
+      await authManager.getAccessToken();
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 }
