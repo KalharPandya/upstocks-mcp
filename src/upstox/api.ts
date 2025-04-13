@@ -82,7 +82,7 @@ export class UpstoxApiClient {
    */
   async getProfile(): Promise<any> {
     try {
-      const response = await this.client.get(endpoints.user.profile);
+      const response = await this.client.get('/user/profile');
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch user profile');
@@ -92,7 +92,7 @@ export class UpstoxApiClient {
   /**
    * Get market data for specified instruments
    * 
-   * Uses the centralized endpoint definition for market data quotes
+   * Uses the correct endpoint '/market-quote/quotes' based on the official Upstox Python client
    */
   async getMarketData(instruments: string[]): Promise<Record<string, UpstoxMarketFeed>> {
     try {
@@ -113,13 +113,18 @@ export class UpstoxApiClient {
       
       console.log(`Fetching market data for: ${formattedInstruments.join(', ')}`);
       
-      // Build the URL with query parameters
-      const queryParams: Record<string, string[]> = {
-        instrument_key: formattedInstruments
-      };
+      // Use the correct endpoint format based on the Upstox Python SDK
+      const endpoint = '/market-quote/quotes';
       
-      // Make the request using the centralized endpoint
-      const response = await this.client.get(buildUrl(endpoints.marketData.quotes, queryParams));
+      // Join instruments with comma for the API parameter format
+      const symbol = formattedInstruments.join(',');
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('symbol', symbol);
+      
+      // Make the request with the correct endpoint and parameter format
+      const response = await this.client.get(`${endpoint}?${params.toString()}`);
       console.log('Market data response status:', response.status);
       
       return this.handleResponse(response);
@@ -155,7 +160,7 @@ export class UpstoxApiClient {
       console.log('Final order request:', JSON.stringify(apiOrderParams, null, 2));
       
       // Place the order using the centralized endpoint
-      const response = await this.client.post(endpoints.orders.place, apiOrderParams);
+      const response = await this.client.post('/order/place', apiOrderParams);
       console.log('Order placement response:', response.status);
       
       const result = this.handleResponse<UpstoxOrder>(response);
@@ -173,7 +178,7 @@ export class UpstoxApiClient {
    */
   async getOrders(): Promise<UpstoxOrder[]> {
     try {
-      const response = await this.client.get(endpoints.orders.getAll);
+      const response = await this.client.get('/order/get-orders');
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch orders');
@@ -185,7 +190,7 @@ export class UpstoxApiClient {
    */
   async getOrder(orderId: string): Promise<UpstoxOrder> {
     try {
-      const url = buildUrl(endpoints.orders.getDetails, { order_id: orderId });
+      const url = `/order/get-order-details?order_id=${orderId}`;
       const response = await this.client.get(url);
       return this.handleResponse(response);
     } catch (error) {
@@ -198,7 +203,7 @@ export class UpstoxApiClient {
    */
   async cancelOrder(orderId: string): Promise<any> {
     try {
-      const url = buildUrl(endpoints.orders.cancel, { order_id: orderId });
+      const url = `/order/cancel?order_id=${orderId}`;
       const response = await this.client.delete(url);
       return this.handleResponse(response);
     } catch (error) {
@@ -211,7 +216,7 @@ export class UpstoxApiClient {
    */
   async getPositions(): Promise<UpstoxPosition[]> {
     try {
-      const response = await this.client.get(endpoints.portfolio.positions);
+      const response = await this.client.get('/portfolio/positions');
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch positions');
@@ -223,7 +228,7 @@ export class UpstoxApiClient {
    */
   async getHoldings(): Promise<UpstoxHolding[]> {
     try {
-      const response = await this.client.get(endpoints.portfolio.holdings);
+      const response = await this.client.get('/portfolio/holdings');
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch holdings');
@@ -244,14 +249,12 @@ export class UpstoxApiClient {
       // Try both endpoints - v2 method requires a segment
       try {
         // First try with regular API
-        const url = buildUrl(endpoints.market.instruments, { exchange });
-        const response = await this.client.get(url);
+        const response = await this.client.get(`/market/instruments?exchange=${exchange}`);
         return this.handleResponse(response);
       } catch (error) {
         // Fallback to master API
         console.log('Falling back to instrument master API...');
-        const url = buildUrl(endpoints.market.instrumentsMaster, { exchange });
-        const response = await this.client.get(url);
+        const response = await this.client.get(`/market/instruments/master?exchange=${exchange}`);
         return this.handleResponse(response);
       }
     } catch (error) {
@@ -265,7 +268,7 @@ export class UpstoxApiClient {
    */
   async getFunds(): Promise<any> {
     try {
-      const response = await this.client.get(endpoints.user.funds);
+      const response = await this.client.get('/user/funds-and-margin');
       return this.handleResponse(response);
     } catch (error) {
       return this.handleApiError(error, 'Failed to fetch funds');
