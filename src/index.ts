@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { startServer } from './server';
+import { startMcpServer } from './server';
 import config from './config/config';
 import { authManager } from './upstox/auth';
 
@@ -12,17 +12,22 @@ async function main() {
     console.log('Starting Upstox MCP server...');
     
     // Display configuration info
-    console.log(`Server mode: ${config.upstox.useSandbox ? 'Sandbox' : 'Live'}`);
+    console.log(`Server mode: ${config.upstox.environment}`);
+    console.log(`Auth method: ${config.upstox.authMethod}`);
     console.log(`Redirect URI: ${config.upstox.redirectUri}`);
     
     // Start the server
-    const server = await startServer();
+    const server = await startMcpServer();
     
-    // If using sandbox, log the authorization URL
-    if (!config.upstox.useSandbox && !authManager.getAuthState().isAuthorized) {
-      const authUrl = await authManager.getAuthorizationUrl();
-      console.log('\nAuthorization required. Please visit the following URL to authenticate:');
-      console.log(authUrl);
+    // If not using token auth and not already authorized, show authorization URL
+    if (!authManager.getAuthState().isAuthorized) {
+      try {
+        const authUrl = authManager.getAuthorizationUrl();
+        console.log('\nAuthorization required. Please visit the following URL to authenticate:');
+        console.log(authUrl);
+      } catch (error) {
+        console.warn('Unable to generate authorization URL:', error.message);
+      }
     }
     
     // Handle graceful shutdown
