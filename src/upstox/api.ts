@@ -94,12 +94,21 @@ export class UpstoxApiClient {
    * Get funds and margin information
    * 
    * Retrieves user's funds, margins, and available balance
+   * Updated to include required API-Version header
    */
   async getFunds(): Promise<any> {
     try {
-      const response = await this.client.get(endpoints.user.funds);
+      console.log('Fetching user funds and margin information');
+      
+      // Required API version header
+      const headers = {
+        'Api-Version': '2.0'  // Required by Upstox API
+      };
+      
+      const response = await this.client.get(endpoints.user.funds, { headers });
       return this.handleResponse(response);
     } catch (error) {
+      console.error('Error fetching funds and margin information:', error);
       return this.handleApiError(error, 'Failed to fetch funds and margin information');
     }
   }
