@@ -71,12 +71,13 @@ export class McpServer {
         res.json(response);
       } catch (error) {
         console.error('Error processing request:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         const response: JsonRpcResponse = {
           jsonrpc: '2.0',
           id: req.body.id || null,
           error: {
             code: -32603,
-            message: `Internal error: ${(error as Error).message}`
+            message: `Internal error: ${errorMessage}`
           }
         };
         res.status(500).json(response);
@@ -108,15 +109,16 @@ export class McpServer {
           </html>
         `);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('Authentication error:', error);
-        res.status(500).send(`Authentication failed: ${(error as Error).message}`);
+        res.status(500).send(`Authentication failed: ${errorMessage}`);
       }
     });
 
     // Health check endpoint
     this.app.get('/health', async (_req, res) => {
       try {
-        const isApiReady = await authManager.getAuthState().isAuthorized;
+        const isApiReady = authManager.getAuthState().isAuthorized;
         
         res.json({ 
           status: 'healthy', 
@@ -125,9 +127,10 @@ export class McpServer {
           api_ready: isApiReady
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         res.status(500).json({
           status: 'unhealthy',
-          error: (error as Error).message
+          error: errorMessage
         });
       }
     });
@@ -152,6 +155,7 @@ export class McpServer {
           ws.send(JSON.stringify(response));
         } catch (error) {
           console.error('WebSocket error:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
           
           // Send error response
           const errorResponse: JsonRpcResponse = {
@@ -159,7 +163,7 @@ export class McpServer {
             id: null,
             error: {
               code: -32700,
-              message: `Parse error: ${(error as Error).message}`
+              message: `Parse error: ${errorMessage}`
             }
           };
           
