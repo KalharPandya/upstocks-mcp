@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Added dedicated wrapper script (`claude-wrapper.js`) for reliable Claude Desktop integration
+- Added debug logging to wrapper script to help troubleshoot Claude integration issues
 - Added support for Claude Desktop-specific `initialize` method for better integration
 - Added support for Claude integration via stdin/stdout transport for MCP
 - Added environment variables `MCP_STDOUT_ONLY` and `MCP_NO_CONSOLE_LOG` to control output redirection
@@ -14,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Added automatic log redirection to stderr when running as MCP server with Claude
 
 ### Fixed
+- Fixed Claude Desktop integration issues by adding stream isolation in the wrapper script
 - Fixed funds endpoint from `/user/funds-and-margin` to `/user/get-funds-and-margin` to match official Upstox API
 - Fixed market data API endpoint from `/market/quotes` to `/market-quote/quotes` to match the official Upstox Python SDK
 - Added required API version header (`Api-Version: 2.0`) for funds and market data endpoints 
