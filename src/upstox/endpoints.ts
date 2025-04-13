@@ -44,7 +44,8 @@ const endpoints = {
   // User
   user: {
     profile: '/user/profile',
-    funds: '/user/funds-and-margin',
+    // FIXED: correct endpoint according to Upstox Python SDK
+    funds: '/user/get-funds-and-margin',
   },
 };
 
