@@ -98,7 +98,6 @@ export function loadConfig(): Config {
   const accessToken = useSandbox
     ? getEnvVariable('SANDBOX_ACCESS_TOKEN', authMethod === AuthMethod.ACCESS_TOKEN)
     : getEnvVariable('ACCESS_TOKEN', authMethod === AuthMethod.ACCESS_TOKEN);
-
   
   return {
     upstox: {
@@ -110,12 +109,16 @@ export function loadConfig(): Config {
       apiKey,
       apiSecret,
       accessToken,
-      liveApiKey: getEnvVariable('LIVE_API_KEY', false),
-      liveApiSecret: getEnvVariable('LIVE_API_SECRET', false),
-      liveAccessToken: getEnvVariable('LIVE_ACCESS_TOKEN', false),
-      sandboxApiKey: getEnvVariable('SANDBOX_API_KEY', false),
-      sandboxApiSecret: getEnvVariable('SANDBOX_API_SECRET', false),
-      sandboxAccessToken: getEnvVariable('SANDBOX_ACCESS_TOKEN', false),
+      
+      // Live credentials
+      liveApiKey: getEnvVariable('API_KEY', false) || "",
+      liveApiSecret: getEnvVariable('API_SECRET', false) || "",
+      liveAccessToken: getEnvVariable('ACCESS_TOKEN', false) || "",
+      
+      // Sandbox credentials
+      sandboxApiKey: getEnvVariable('SANDBOX_API_KEY', false) || "",
+      sandboxApiSecret: getEnvVariable('SANDBOX_API_SECRET', false) || "",
+      sandboxAccessToken: getEnvVariable('SANDBOX_ACCESS_TOKEN', false) || "",
     },
     server: {
       port: parseInt(getEnvVariable('PORT', false) || '3000', 10),
@@ -133,21 +136,12 @@ export function getCredentials(config: Config): {
   apiSecret: string;
   accessToken: string;
 } {
-  if (config.upstox.environment === EnvironmentType.LIVE) {
-    return {
-      apiKey: config.upstox.liveApiKey || "",
-      apiSecret: config.upstox.liveApiSecret || "",
-      accessToken: config.upstox.liveAccessToken || "",
-    };
-  } else if (config.upstox.environment === EnvironmentType.SANDBOX) {
-    return {
-      apiKey: config.upstox.sandboxApiKey || "",
-      apiSecret: config.upstox.sandboxApiSecret || "",
-      accessToken: config.upstox.sandboxAccessToken || "",
-    };
-  } else {
-    return { apiKey: "", apiSecret: "", accessToken: "" };
-  }
+  // Directly use the pre-computed credentials from the config
+  return {
+    apiKey: config.upstox.apiKey,
+    apiSecret: config.upstox.apiSecret,
+    accessToken: config.upstox.accessToken,
+  };
 }
 
 /**
@@ -185,4 +179,5 @@ export function validateConfig(config: Config): void {
 // Load and validate config
 const config = loadConfig();
 validateConfig(config);
+
 export default config;
